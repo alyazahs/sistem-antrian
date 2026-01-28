@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Dropdown } from "primereact/dropdown";
 import axios from "axios";
 
-const API = "http://localhost:5000/api/jenis-pelayanan";
+const API_BASE = import.meta.env.VITE_API_URL;
+const API = `${API_BASE}/api/jenis-pelayanan`;
+
 
 export default function FormPengunjungBaru({
   loading,

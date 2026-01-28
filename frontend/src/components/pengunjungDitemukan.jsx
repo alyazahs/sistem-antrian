@@ -3,7 +3,7 @@ import { Dropdown } from "primereact/dropdown";
 import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_URL;
-const API_JENIS = `${API_BASE}/master/jenis-pelayanan`;
+const API_JENIS = `${API_BASE}/api/jenis-pelayanan`;
 
 export default function FormPengunjungDitemukan({
   loading,

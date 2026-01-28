@@ -7,7 +7,7 @@ import TabelJenisPelayanan from "./components/tabelJenisPelayanan";
 import FormDialogJenisPelayanan from "./components/formJenisPelayanan";
 
 const API_BASE = import.meta.env.VITE_API_URL;
-const API = `${API_BASE}/master/jenis-pelayanan`;
+const API = `${API_BASE}/api/jenis-pelayanan`;
 
 export default function JenisPelayananPage() {
   const [data, setData] = useState([]);
