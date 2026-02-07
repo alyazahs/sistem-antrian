@@ -1,4 +1,5 @@
-// src/components/layout/sidebar.jsx
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+
 export default function Sidebar({
   active = "pendaftaran",
   onNavigate = () => {},
@@ -15,7 +16,7 @@ export default function Sidebar({
           "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left font-semibold transition",
           indent ? "pl-10 text-[14px]" : "",
           isActive
-            ? "bg-blue-50 text-blue-600"
+            ? "bg-[#2BB0A6] text-white shadow-md"
             : "text-slate-500 hover:bg-blue-50/60 hover:text-slate-800",
         ].join(" ")}
       >
@@ -24,7 +25,7 @@ export default function Sidebar({
             className={[
               icon,
               "w-[18px]",
-              isActive ? "text-blue-600" : "text-slate-500",
+              isActive ? "text-white" : "text-slate-500",
             ].join(" ")}
           />
         ) : (
@@ -37,8 +38,20 @@ export default function Sidebar({
 
   const isMasterOpen = active.startsWith("master");
 
+  const confirmLogout = () => {
+    confirmDialog({
+      message: "Apakah Anda yakin ingin logout?",
+      header: "Konfirmasi Logout",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Ya",
+      rejectLabel: "Batal",
+      acceptClassName: "p-button-danger",
+      accept: () => onLogout(),
+    });
+  };
+
   return (
-    <aside className="sticky top-0 flex h-screen flex-col overflow-auto border-r border-slate-200 bg-white px-4 py-5">
+    <aside className="sticky top-0 flex h-screen flex-col overflow-auto border-r border-slate-200 bg-[#D9F1ED] px-4 py-5">
       <div className="mb-4 flex items-center gap-4 border-b border-slate-200 px-2 pb-4">
         <img
           src="/image.png"
@@ -56,16 +69,23 @@ export default function Sidebar({
       </div>
 
       <nav className="flex flex-col gap-1 px-1">
-        <Item id="dashboard" icon="fa-solid fa-gauge" label="Dashboard" />
-
-        {/* MASTER (parent) */}
+        <Item id="dashboard" icon="fa-solid fa-chart-pie" label="Dashboard" />
         <Item id="master-jenis" icon="fa-solid fa-database" label="Master" />
 
-        {/* submenu master */}
         {isMasterOpen && (
           <div className="mt-1 space-y-1 rounded-xl bg-slate-50 p-1">
-            <Item id="master-jenis" label="Jenis Pelayanan" indent />
-            <Item id="master-identitas" label="Identitas" indent />
+            <Item
+              id="master-jenis"
+              icon="fa-solid fa-list"
+              label="Jenis Pelayanan"
+              indent
+            />
+            <Item
+              id="master-identitas"
+              icon="fa-solid fa-user"
+              label="Identitas"
+              indent
+            />
           </div>
         )}
 
@@ -74,15 +94,16 @@ export default function Sidebar({
         <Item id="laporan" icon="fa-solid fa-file-lines" label="Laporan" />
       </nav>
 
-      <div className="mt-auto flex items-center gap-2 border-t border-slate-200 px-2 pt-4 text-slate-500">
-        <i className="fa-solid fa-arrow-right-from-bracket" />
+      <div className="mt-auto border-t border-slate-200 px-2 pt-4">
         <button
           type="button"
-          onClick={onLogout}
-          className="rounded-xl px-2 py-2 font-bold transition hover:bg-red-50 hover:text-red-500"
+          onClick={confirmLogout}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/70 px-4 py-3 font-extrabold text-slate-700 shadow-sm transition hover:bg-red-50 hover:text-red-600 hover:shadow-md active:scale-[0.99]"
         >
+          <i className="fa-solid fa-arrow-right-from-bracket" />
           Logout
         </button>
+        <ConfirmDialog />
       </div>
     </aside>
   );
