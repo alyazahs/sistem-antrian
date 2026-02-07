@@ -30,18 +30,19 @@ export default function AppLayout({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="grid min-h-screen grid-cols-1 md:grid-cols-[280px_1fr]">
-        <Sidebar
-          active={active}
-          onNavigate={handleNavigate}
-          onLogout={onLogout}
-        />
+    <div className="h-screen bg-slate-50 overflow-hidden">
+      <div className="grid h-screen grid-cols-1 md:grid-cols-[280px_1fr]">
+        <Sidebar active={active} onNavigate={handleNavigate} onLogout={onLogout} />
 
-        <main className="min-w-0">
+        <main className="min-w-0 h-screen flex flex-col">
+          {/* headbar tetap */}
           <Headbar title={titleMap[active] || "Pendaftaran Pengunjung"} />
-          <div className="mx-auto w-full max-w-[1200px] p-6 md:p-8">
-            {children}
+
+          {/* konten scroll */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto w-full max-w-[1200px] p-6 md:p-8">
+              {children}
+            </div>
           </div>
         </main>
       </div>
