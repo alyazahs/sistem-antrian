@@ -1,50 +1,39 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
+import { Toolbar } from 'primereact/toolbar';
+import { Avatar } from 'primereact/avatar';
 
-export default function Headbar({ title = "Pendaftaran Pengunjung" }) {
-  const [dateText, setDateText] = useState("–");
+export default function Headbar({ title }) {
+  const [dateStr, setDateStr] = useState('');
 
   useEffect(() => {
-    const format = () =>
-      new Intl.DateTimeFormat("id-ID", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }).format(new Date());
-
-    setDateText(format());
-    const t = setInterval(() => setDateText(format()), 60_000);
-    return () => clearInterval(t);
+    const now = new Date();
+    const options = {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    };
+    setDateStr(now.toLocaleDateString('id-ID', options));
   }, []);
 
+  const left = (
+    <div className="flex flex-col mt-1">
+      <h3 className="m-0 text-lg font-bold">{title}</h3>
+      <span className="text-sm text-gray-500">{dateStr}</span>
+    </div>
+  );
+  const right = (
+    <div className="flex items-center gap-2">
+      <Avatar image="https://i.pravatar.cc/40?img=12" shape="circle" className="w-[38px] h-[38px]" />
+      <div className="text-right">
+        <strong className="block text-base">Admin Pelayanan</strong>
+        <small className="block text-xs text-gray-500">Kecamatan Jiwan</small>
+      </div>
+    </div>
+  );
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-8 py-5">
-      <div className="min-w-0">
-        <h3 className="truncate text-lg font-extrabold text-slate-800">
-          {title}
-        </h3>
-        <span className="mt-1 inline-block text-sm font-semibold text-slate-500">
-          {dateText}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-3">
-          <img
-            className="h-10 w-10 rounded-full"
-            src="https://i.pravatar.cc/40?img=12"
-            alt="Admin"
-          />
-          <div className="leading-tight">
-            <strong className="block text-[15px] text-slate-800">
-              Admin Pelayanan
-            </strong>
-            <small className="block text-sm font-semibold text-slate-500">
-              Kecamatan Jiwan
-            </small>
-          </div>
-        </div>
-      </div>
-    </header>
+    <div className="bg-[#D9F1ED] px-7 py-5 shadow-md flex justify-between items-center relative z-50">
+      <Toolbar left={left} right={right} className="w-full bg-transparent border-none shadow-none" />
+    </div>
   );
 }
