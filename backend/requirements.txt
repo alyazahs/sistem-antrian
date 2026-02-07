@@ -1,3 +1,8 @@
-flask==3.0.0
-mfrc522
-RPi.GPIO
+flask==3.0.
+# spiddev
+# mfrc522
+# RPi.GPIO
+gTTS
+pygame
+gunicorn
+python-escpos
