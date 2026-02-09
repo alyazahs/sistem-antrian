@@ -40,7 +40,7 @@ export default function AppLayout({
 
           {/* konten scroll */}
           <div className="flex-1 overflow-y-auto">
-            <div className="mx-auto w-full max-w-[1200px] p-6 md:p-8">
+            <div className="w-full p-6 md:p-8">
               {children}
             </div>
           </div>
