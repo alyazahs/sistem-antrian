@@ -1,11 +1,7 @@
 // src/App.jsx
 import { useState } from "react";
-import AppLayout from "./components/layout/layout";
-
+import AppLayout from "./layout/layout";
 import Pendaftaran from "./pages/pendaftaran/pendaftaran";
-// import Antrian from "./pages/antrian/antrian";
-// import Laporan from "./pages/laporan/laporan";
-
 import JenisPelayananPage from "./pages/master/jenis_pelayanan/page";
 import IdentitasPage from "./pages/master/identitas/page";
 
