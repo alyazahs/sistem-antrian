@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { Dropdown } from "primereact/dropdown";
 import axios from "axios";
+import { Dropdown } from "primereact/dropdown";
+import { InputText } from "primereact/inputtext";
+import { InputTextarea } from "primereact/inputtextarea";
+import { InputNumber } from "primereact/inputnumber";
+import { Button } from "primereact/button";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 const API = `${API_BASE}/api/jenis-pelayanan`;
-
 
 export default function FormPengunjungBaru({
   loading,
@@ -13,12 +16,12 @@ export default function FormPengunjungBaru({
   nikAwal = "",
 }) {
   const [form, setForm] = useState({
-    nik: "%B",
+    nik: "",
     nama: "",
     nohp: "",
-    umur: "",
+    umur: null,
     alamat: "",
-    kebutuhan: null, // simpan object {id,nama} atau id (sesuai kebutuhan)
+    jenis_pelayanan: null, // {id,nama}
   });
 
   const [opsiJenis, setOpsiJenis] = useState([]);
@@ -35,14 +38,8 @@ export default function FormPengunjungBaru({
       setLoadingJenis(true);
       try {
         const res = await axios.get(API);
-        const arr = Array.isArray(res.data) ? res.data : res.data.data || [];
-        // mapping untuk Dropdown
-        setOpsiJenis(
-          arr.map((x) => ({
-            id: x.id,
-            nama: x.nama,
-          }))
-        );
+        const arr = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        setOpsiJenis(arr.map((x) => ({ id: x.id, nama: x.nama })));
       } catch (e) {
         console.error("Gagal ambil jenis pelayanan:", e);
       } finally {
@@ -51,110 +48,134 @@ export default function FormPengunjungBaru({
     })();
   }, []);
 
-  const isi = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
-
   const submit = () => {
     onSubmit({
       ...form,
-      jenis_pelayanan_id: form.kebutuhan?.id ?? null,
-      jenis_pelayanan: form.kebutuhan?.nama ?? "",
+      jenis_pelayanan_id: form.jenis_pelayanan?.id ?? null,
+      jenis_pelayanan: form.jenis_pelayanan?.nama ?? "",
     });
   };
+
+  const disabledAll = loading || loadingJenis;
 
   return (
     <div className="mt-5">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.2fr_1fr]">
-        <div>
-          <label className="mt-2 block text-xs font-semibold text-slate-600">
-            Nama
-          </label>
-          <input
-            className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-            value={form.nama}
-            onChange={isi("nama")}
-            placeholder="Masukkan nama lengkap"
-          />
+        {/* KIRI */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600">
+              Nama
+            </label>
+            <InputText
+              value={form.nama}
+              onChange={(e) => setForm((p) => ({ ...p, nama: e.target.value }))}
+              className="mt-2 w-full"
+              placeholder="Masukkan nama lengkap"
+            />
+          </div>
 
-          <label className="mt-4 block text-xs font-semibold text-slate-600">
-            No. HP
-          </label>
-          <input
-            className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-            value={form.nohp}
-            onChange={isi("nohp")}
-            placeholder="08xxxxxxxxxx (opsional)"
-          />
+          <div>
+            <label className="block text-xs font-semibold text-slate-600">
+              No. HP
+            </label>
+            <InputNumber
+              value={form.nohp}
+              onValueChange={(e) => setForm((p) => ({ ...p, nohp: e.value }))}
+              className="mt-2 w-full"
+              useGrouping={false}
+              placeholder="08xxxxxxxxxx"
+            />
+          </div>
 
-          <label className="mt-4 block text-xs font-semibold text-slate-600">
-            Alamat Lengkap
-          </label>
-          <textarea
-            className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-            value={form.alamat}
-            onChange={isi("alamat")}
-            rows={7}
-            placeholder="Masukkan alamat lengkap"
-          />
+          <div>
+            <label className="block text-xs font-semibold text-slate-600">
+              Alamat Lengkap
+            </label>
+            <InputTextarea
+              value={form.alamat}
+              onChange={(e) => setForm((p) => ({ ...p, alamat: e.target.value }))}
+              rows={7}
+              className="mt-2 w-full"
+              placeholder="Masukkan alamat lengkap"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="mt-2 block text-xs font-semibold text-slate-600">
-            NIK
-          </label>
-          <input
-            className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-            value={form.nik}
-            onChange={isi("nik")}
-            placeholder="Masukkan NIK (wajib jika RFID tidak ada)"
-          />
+        {/* KANAN */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600">
+              NIK
+            </label>
+            <InputNumber
+              value={form.nik}
+              onValueChange={(e) => setForm((p) => ({ ...p, nik: e.value }))}
+              className="mt-2 w-full"
+              useGrouping={false}
+              placeholder="Masukkan NIK (wajib jika RFID tidak ada)"
+            />
+          </div>
 
-          <label className="mt-4 block text-xs font-semibold text-slate-600">
-            Umur
-          </label>
-          <input
-            type="number"
-            className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-            value={form.umur}
-            onChange={isi("umur")}
-            placeholder="Masukkan umur"
-          />
+          <div>
+            <label className="block text-xs font-semibold text-slate-600">
+              Umur
+            </label>
+            <InputNumber
+              value={form.umur}
+              onValueChange={(e) =>
+                setForm((p) => ({ ...p, umur: e.value }))
+              }
+              className="mt-2 w-full"
+              inputClassName="w-full"
+              useGrouping={false}
+              placeholder="Masukkan umur"
+            />
+          </div>
 
-          <label className="mt-4 block text-xs font-semibold text-slate-600">
-            Jenis Pelayanan
-          </label>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600">
+              Jenis Pelayanan
+            </label>
             <Dropdown
-              value={form.kebutuhan}
+              value={form.jenis_pelayanan}
               options={opsiJenis}
               optionLabel="nama"
               placeholder={loadingJenis ? "Memuat..." : "Pilih jenis pelayanan"}
-              onChange={(e) => setForm((p) => ({ ...p, kebutuhan: e.value }))}
-              className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-              disabled={loading || loadingJenis}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, jenis_pelayanan: e.value }))
+              }
+              className="mt-2 w-full"
+              disabled={disabledAll}
               showClear
               filter
             />
+          </div>
         </div>
       </div>
 
-      {/* Aksi */}
+      {/* AKSI */}
       <div className="mt-6 flex justify-center gap-5">
-        <button
+        <Button
+          label="Batal"
+          severity="secondary"
+          outlined
+          className="w-40"
           onClick={onBatal}
           disabled={loading}
-          className="w-40 rounded-xl border border-rose-300 bg-rose-200 px-4 py-3 text-sm font-extrabold text-rose-700 hover:bg-rose-300 disabled:opacity-70"
-          type="button"
-        >
-          BATAL
-        </button>
+        />
 
-        <button
+        <Button
+          label={loading ? "PROCESS..." : "DAFTAR"}
+          className="w-40"
           onClick={submit}
-          disabled={loading || !form.nama.trim() || !form.nik.trim() || !form.kebutuhan}
-          className="w-40 rounded-xl border border-emerald-300 bg-emerald-200 px-4 py-3 text-sm font-extrabold text-emerald-800 hover:bg-emerald-300 disabled:opacity-70"
-          type="button"
-        >
-          {loading ? "PROCESS..." : "DAFTAR"}
-        </button>
+          disabled={
+            loading ||
+            !form.nama.trim() ||
+            !form.nik.trim() ||
+            !form.jenis_pelayanan
+          }
+        />
       </div>
     </div>
   );
