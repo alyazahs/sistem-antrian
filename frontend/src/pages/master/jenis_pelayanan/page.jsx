@@ -3,6 +3,7 @@ import axios from "axios";
 import { Button } from "primereact/button";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Toast } from "primereact/toast";
+import { InputText } from "primereact/inputtext";
 import TabelJenisPelayanan from "./components/tabelJenisPelayanan";
 import FormDialogJenisPelayanan from "./components/formJenisPelayanan";
 
@@ -11,6 +12,8 @@ const API = `${API_BASE}/api/jenis-pelayanan`;
 
 export default function JenisPelayananPage() {
   const [data, setData] = useState([]);
+  const [originalData, setOriginalData] = useState([]);
+  const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [form, setForm] = useState({ id: null, nama: "" });
@@ -26,7 +29,9 @@ export default function JenisPelayananPage() {
     setLoading(true);
     try {
       const res = await axios.get(API);
-      setData(Array.isArray(res.data) ? res.data : res.data.data || []);
+      const rows = Array.isArray(res.data) ? res.data : res.data.data || [];
+      setData(rows);
+      setOriginalData(rows);
     } catch (err) {
       console.error(err);
       toastRef.current?.show({
@@ -40,11 +45,24 @@ export default function JenisPelayananPage() {
     }
   };
 
+  const handleSearch = (value) => {
+    const q = (value || "").toLowerCase().trim();
+    setKeyword(value);
+
+    if (!q) {
+      setData(originalData);
+      return;
+    }
+
+    const filtered = originalData.filter((item) =>
+      String(item?.nama || "").toLowerCase().includes(q)
+    );
+    setData(filtered);
+  };
+
   const validateForm = () => {
     const newErrors = {};
-    if (!String(form.nama || "").trim()) {
-      newErrors.nama = "Nama wajib diisi";
-    }
+    if (!String(form.nama || "").trim()) newErrors.nama = "Nama wajib diisi";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -77,6 +95,7 @@ export default function JenisPelayananPage() {
       setDialogVisible(false);
       setForm({ id: null, nama: "" });
       setErrors({});
+      setKeyword("");
       fetchData();
     } catch (err) {
       console.error(err);
@@ -111,6 +130,7 @@ export default function JenisPelayananPage() {
             detail: "Data berhasil dihapus",
             life: 2000,
           });
+          setKeyword("");
           fetchData();
         } catch (err) {
           console.error(err);
@@ -130,26 +150,33 @@ export default function JenisPelayananPage() {
       <Toast ref={toastRef} />
       <ConfirmDialog />
 
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h3 className="text-xl font-semibold">Master Jenis Pelayanan</h3>
 
-        <Button
-          label="Tambah"
-          icon="pi pi-plus"
-          onClick={() => {
-            setForm({ id: null, nama: "" });
-            setErrors({});
-            setDialogVisible(true);
-          }}
-        />
+        <div className="flex w-full items-center gap-2 md:w-auto">
+          <span className="p-input-icon-left w-full md:w-[320px]">
+            <i className="pi pi-search ml-2" />
+            <InputText
+              value={keyword}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Cari jenis pelayanan..."
+              className="w-full pl-8"
+            />
+          </span>
+
+          <Button
+            label="Tambah"
+            icon="pi pi-plus"
+            onClick={() => {
+              setForm({ id: null, nama: "" });
+              setErrors({});
+              setDialogVisible(true);
+            }}
+          />
+        </div>
       </div>
 
-      <TabelJenisPelayanan
-        data={data}
-        loading={loading}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+      <TabelJenisPelayanan data={data} loading={loading} onEdit={handleEdit} onDelete={handleDelete} />
 
       <FormDialogJenisPelayanan
         visible={dialogVisible}
