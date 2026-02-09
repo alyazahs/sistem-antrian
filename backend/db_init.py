@@ -18,10 +18,10 @@ CREATE TABLE IF NOT EXISTS master_jenis_pelayanan (
 -- Tabel data pengunjung (master)
 CREATE TABLE IF NOT EXISTS pengunjung (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  rfid_uid TEXT UNIQUE,          -- UID RFID e-KTP (boleh NULL kalau daftar manual via NIK)
-  nik TEXT UNIQUE,               -- NIK (untuk pencarian manual)
+  rfid_uid TEXT UNIQUE,         
+  nik TEXT UNIQUE,               
   nama TEXT NOT NULL,
-  nohp TEXT,
+  nohp INTEGER,
   umur INTEGER,
   alamat TEXT,
   created_at TEXT DEFAULT (datetime('now','localtime'))
