@@ -1,9 +1,9 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import sqlite3
-
 from db_init import init_db, DB_PATH
 from rfid_reader import rfid_reader
+from printer_service import printer_service
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -16,14 +16,18 @@ def get_db():
     return conn
 
 def _next_nomor_antrian(conn: sqlite3.Connection) -> int:
+    conn.execute("BEGIN IMMEDIATE")  # lock untuk mencegah bentrok
+
     row = conn.execute("SELECT value FROM metadata WHERE key='last_nomor_antrian'").fetchone()
     last_num = int(row["value"]) if row and row["value"] is not None else 0
     next_num = last_num + 1
+
     conn.execute("""
       INSERT INTO metadata(key,value) VALUES('last_nomor_antrian', ?)
       ON CONFLICT(key) DO UPDATE SET value=excluded.value
     """, (str(next_num),))
     return next_num
+
 
 @app.get("/")
 def health():
@@ -38,7 +42,7 @@ def list_jenis():
             FROM master_jenis_pelayanan
             ORDER BY nama ASC
         """).fetchall()
-        return jsonify([dict(r) for r in rows])
+        return jsonify([dict(r) for r in rows   ])
     finally:
         conn.close()
 
@@ -147,14 +151,21 @@ def cari_nik():
 def daftar_pengunjung():
     data = request.get_json(silent=True) or {}
 
-    rfid_uid = (data.get("rfid_uid") or "").strip() or None
-    nik = (data.get("nik") or "").strip() or None
-    nama = (data.get("nama") or "").strip()
-    nohp = (data.get("nohp") or "").strip() or None
-    alamat = (data.get("alamat") or "").strip() or None
+    def clean_str(v):
+        if v is None:
+            return None
+        v = str(v).strip()
+        return v if v != "" else None
+
+    rfid_uid = clean_str(data.get("rfid_uid"))
+    nik      = clean_str(data.get("nik"))
+    nama     = (data.get("nama") or "").strip()
+    nohp     = clean_str(data.get("nohp"))      # ✅ aman kalau int
+    alamat   = clean_str(data.get("alamat"))
+
     umur = data.get("umur")
     try:
-        umur = int(umur) if umur not in (None, "",) else None
+        umur = int(umur) if umur not in (None, "", "null") else None
     except Exception:
         umur = None
 
@@ -165,15 +176,10 @@ def daftar_pengunjung():
 
     conn = get_db()
     try:
-        if rfid_uid:
-            existing = conn.execute("SELECT id FROM pengunjung WHERE rfid_uid=?", (rfid_uid,)).fetchone()
-            if existing:
-                return jsonify({"success": False, "message": "RFID sudah terdaftar"}), 400
-
-        if nik:
-            existing_nik = conn.execute("SELECT id FROM pengunjung WHERE nik=?", (nik,)).fetchone()
-            if existing_nik:
-                return jsonify({"success": False, "message": "NIK sudah terdaftar"}), 400
+        if rfid_uid and conn.execute("SELECT 1 FROM pengunjung WHERE rfid_uid=?", (rfid_uid,)).fetchone():
+            return jsonify({"success": False, "message": "RFID sudah terdaftar"}), 400
+        if nik and conn.execute("SELECT 1 FROM pengunjung WHERE nik=?", (nik,)).fetchone():
+            return jsonify({"success": False, "message": "NIK sudah terdaftar"}), 400
 
         conn.execute("""
             INSERT INTO pengunjung (rfid_uid, nik, nama, nohp, umur, alamat)
@@ -223,6 +229,11 @@ def ambil_antrian():
         """, (pengunjung["id"], nomor, jenis))
         conn.commit()
 
+        try:
+            printer_service.print_ticket(nomor, pengunjung["nama"], jenis, None)
+        except Exception as e:
+            print(f"Failed to print ticket: {e}")
+            
         return jsonify({
             "success": True,
             "nomor_antrian": nomor,
