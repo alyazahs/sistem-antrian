@@ -21,7 +21,7 @@ export default function FormPengunjungBaru({
     nohp: "",
     umur: null,
     alamat: "",
-    jenis_pelayanan: null, // {id,nama}
+    jenis_pelayanan: null, 
   });
 
   const [opsiJenis, setOpsiJenis] = useState([]);
@@ -79,12 +79,11 @@ export default function FormPengunjungBaru({
             <label className="block text-xs font-semibold text-slate-600">
               No. HP
             </label>
-            <InputNumber
+            <InputText
               value={form.nohp}
-              onValueChange={(e) => setForm((p) => ({ ...p, nohp: e.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, nohp: e.target.value }))}
               className="mt-2 w-full"
-              useGrouping={false}
-              placeholder="08xxxxxxxxxx"
+              placeholder="08xxxxxxxxxx (opsional)"
             />
           </div>
 
@@ -108,11 +107,10 @@ export default function FormPengunjungBaru({
             <label className="block text-xs font-semibold text-slate-600">
               NIK
             </label>
-            <InputNumber
+            <InputText
               value={form.nik}
-              onValueChange={(e) => setForm((p) => ({ ...p, nik: e.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, nik: e.target.value }))}
               className="mt-2 w-full"
-              useGrouping={false}
               placeholder="Masukkan NIK (wajib jika RFID tidak ada)"
             />
           </div>

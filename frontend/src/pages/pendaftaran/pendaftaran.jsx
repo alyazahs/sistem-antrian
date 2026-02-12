@@ -167,7 +167,7 @@ export default function Pendaftaran() {
         rfid_uid: rfidUid || null,
         nik: nik || null,
         nama,
-        nohp: form.nohp ? Number(form.nohp) : null,
+        nohp: (form.nohp || "").trim() || null,
         umur: form.umur ? Number(form.umur) : null,
         alamat: (form.alamat || "").trim() || null,
       });
