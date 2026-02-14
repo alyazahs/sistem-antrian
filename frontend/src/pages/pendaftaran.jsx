@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { scanRfid, daftarPengunjung, ambilAntrian, cariNIK } from "../api";
 import { Toast } from "primereact/toast";
-import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Message } from "primereact/message";
@@ -15,7 +14,7 @@ export default function Pendaftaran() {
 
   const showToast = (severity, detail) => {
     toastRef.current?.show({
-      severity, // "success" | "info" | "warn" | "error"
+      severity, 
       summary:
         severity === "success"
           ? "Berhasil"
@@ -225,7 +224,6 @@ export default function Pendaftaran() {
     <div className="card">
       <Toast ref={toastRef} />
 
-      <div className="mx-auto w-full max-w-6xl px-6 py-7">
         <div className="mb-5">
           <h1 className="text-3xl font-bold">Pendaftaran</h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -233,7 +231,6 @@ export default function Pendaftaran() {
           </p>
         </div>
 
-        <Card className="shadow-md">
           <div className="flex flex-col gap-4">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div>
@@ -244,7 +241,6 @@ export default function Pendaftaran() {
               </div>
             </div>
 
-            {/* Cari NIK */}
             <div className="flex flex-col gap-2 md:flex-row md:items-center">
               <span className="p-input-icon-left w-full md:flex-1">
                 <i className="pi pi-search ml-2" />
@@ -265,8 +261,6 @@ export default function Pendaftaran() {
             </div>
 
             <Divider className="my-1" />
-
-            {/* Bar Scan */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
                 {statusScan === "scanning" ? (
@@ -285,7 +279,6 @@ export default function Pendaftaran() {
               </div>
             </div>
 
-            {/* Alert */}
             {tampilBaru && (
               <Message
                 severity="warn"
@@ -300,7 +293,6 @@ export default function Pendaftaran() {
               />
             )}
 
-            {/* Form */}
             {tampilBaru && (
               <FormPengunjungBaru
                 loading={loading}
@@ -325,8 +317,6 @@ export default function Pendaftaran() {
               />
             )}
           </div>
-        </Card>
       </div>
-    </div>
   );
 }
