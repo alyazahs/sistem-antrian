@@ -1,7 +1,8 @@
 // src/App.jsx
 import { useState } from "react";
 import AppLayout from "./layout/layout";
-import Pendaftaran from "./pages/pendaftaran/pendaftaran";
+import Pendaftaran from "./pages/pendaftaran";
+import Antrian from "./pages/antrian";
 import JenisPelayananPage from "./pages/master/jenis_pelayanan/page";
 import IdentitasPage from "./pages/master/identitas/page";
 
@@ -15,13 +16,14 @@ export default function App() {
       case "master-identitas":
         return <IdentitasPage />;
       case "antrian":
-        return <Pendaftaran />;
+        return <Antrian />;
       case "laporan":
         return <Pendaftaran />;
       case "pendaftaran":
       default:
         return <Pendaftaran />;
     }
+    
   };
 
   return (

@@ -4,10 +4,11 @@ import sqlite3
 from db_init import init_db, DB_PATH
 from rfid_reader import rfid_reader
 from printer_service import printer_service
+from tts_service import tts_service
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
-
+ 
 init_db()
 
 def get_db():
@@ -239,6 +240,194 @@ def ambil_antrian():
             "nomor_antrian": nomor,
             "pengunjung": dict(pengunjung)
         })
+    finally:
+        conn.close()
+
+# 5) API Halaman Antrian
+@app.get("/api/antrian/summary")
+def antrian_summary():
+    conn = get_db()
+    try:
+        total = conn.execute("""
+          SELECT COUNT(*) AS n
+          FROM antrian
+          WHERE date(created_at) = date('now','localtime')
+        """).fetchone()["n"]
+
+        menunggu = conn.execute("""
+          SELECT COUNT(*) AS n FROM antrian WHERE status='menunggu'
+        """).fetchone()["n"]
+
+        dipanggil = conn.execute("""
+          SELECT COUNT(*) AS n FROM antrian WHERE status='dipanggil'
+        """).fetchone()["n"]
+
+        selesai = conn.execute("""
+          SELECT COUNT(*) AS n FROM antrian WHERE status='selesai'
+        """).fetchone()["n"]
+        
+        skip = conn.execute("""
+          SELECT COUNT(*) AS n FROM antrian WHERE status='dilewati'
+        """).fetchone()["n"]
+
+        return jsonify({
+            "total_hari_ini": total,
+            "menunggu": menunggu,
+            "dipanggil": dipanggil,
+            "dilayani": selesai,   
+            "dilewati": skip          
+        })
+    finally:
+        conn.close()
+
+@app.get("/api/antrian/now")
+def antrian_now():
+    conn = get_db()
+    try:
+        row = conn.execute("""
+          SELECT a.id, a.nomor_antrian, a.jenis_pelayanan, a.status,
+                 p.nama, p.nik
+          FROM antrian a
+          JOIN pengunjung p ON p.id = a.pengunjung_id
+          WHERE a.status='dipanggil'
+          ORDER BY a.id DESC
+          LIMIT 1
+        """).fetchone()
+
+        return jsonify(dict(row) if row else None)
+    finally:
+        conn.close()
+
+@app.get("/api/antrian/list")
+def antrian_list():
+    status = (request.args.get("status") or "menunggu").strip()
+
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+          SELECT a.id, a.nomor_antrian, a.jenis_pelayanan, a.status,
+                 p.nama
+          FROM antrian a
+          JOIN pengunjung p ON p.id = a.pengunjung_id
+          WHERE a.status=?
+          ORDER BY a.created_at ASC
+        """, (status,)).fetchall()
+
+        return jsonify([dict(r) for r in rows])
+    finally:
+        conn.close()
+
+@app.post("/api/antrian/call-next")
+def antrian_call_next():
+    conn = get_db()
+    try:
+        current = conn.execute("""
+          SELECT id FROM antrian
+          WHERE status='dipanggil'
+          LIMIT 1
+        """).fetchone()
+
+        if current:
+            return jsonify({
+                "success": False,
+                "message": "Masih ada antrian dipanggil. Selesaikan dulu."
+            }), 409
+
+        row = conn.execute("""
+          SELECT id FROM antrian
+          WHERE status='menunggu'
+          ORDER BY created_at ASC
+          LIMIT 1
+        """).fetchone()
+
+        if not row:
+            return jsonify({"success": False, "message": "Tidak ada antrian menunggu"}), 404
+
+        antrian_id = row["id"]
+
+        conn.execute("""
+          UPDATE antrian
+          SET status='dipanggil'
+          WHERE id=?
+        """, (antrian_id,))
+        conn.commit()
+
+        data = conn.execute("""
+        SELECT a.id, a.nomor_antrian, a.jenis_pelayanan, a.status,
+                p.nama
+        FROM antrian a
+        JOIN pengunjung p ON p.id = a.pengunjung_id
+        WHERE a.id=?
+        """, (antrian_id,)).fetchone()
+
+        try:
+            if data:
+                tts_service.pengumuman(data["nama"], data["nomor_antrian"])
+        except Exception as e:
+            print("TTS Error:", e)
+
+        return jsonify({"success": True, **dict(data)})
+    finally:
+        conn.close()
+
+@app.post("/api/antrian/serve/<int:antrian_id>")
+def antrian_serve(antrian_id):
+    conn = get_db()
+    try:
+        cur = conn.execute("""
+          UPDATE antrian
+          SET status='selesai'
+          WHERE id=?
+        """, (antrian_id,))
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return jsonify({"success": False, "message": "Antrian tidak ditemukan"}), 404
+
+        return jsonify({"success": True})
+    finally:
+        conn.close()
+
+@app.post("/api/antrian/skip/<int:antrian_id>")
+def antrian_skip(antrian_id):
+    conn = get_db()
+    try:
+        cur = conn.execute("""
+          UPDATE antrian
+          SET status='menunggu',
+              created_at=datetime('now','localtime')
+          WHERE id=?
+        """, (antrian_id,))
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return jsonify({"success": False, "message": "Antrian tidak ditemukan"}), 404
+
+        return jsonify({"success": True})
+    finally:
+        conn.close()
+        
+@app.post("/api/antrian/recall/<int:antrian_id>")
+def antrian_recall(antrian_id):
+    conn = get_db()
+    try:
+        row = conn.execute("""
+          SELECT a.id, a.nomor_antrian, a.jenis_pelayanan,
+                 p.nama
+          FROM antrian a
+          JOIN pengunjung p ON p.id = a.pengunjung_id
+          WHERE a.id=? AND a.status='dipanggil'
+        """, (antrian_id,)).fetchone()
+
+        if not row:
+            return jsonify({"success": False, "message": "Antrian tidak sedang dipanggil"}), 400
+
+        try:
+            tts_service.pengumuman(row["nama"], row["nomor_antrian"])
+        except Exception as e:
+            print("TTS Recall Error:", e)
+
+        return jsonify({"success": True})
     finally:
         conn.close()
 
