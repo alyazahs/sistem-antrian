@@ -9,7 +9,6 @@ import {
   panggilUlangAntrian,
 } from "../api";
 import { Toast } from "primereact/toast";
-import { Card } from "primereact/card";
 import { Divider } from "primereact/divider";
 import AntrianStats from "../components/antrian/antrianStats";
 import AntrianNow from "../components/antrian/antrianNow";
@@ -162,7 +161,6 @@ export default function Antrian() {
     <div className="card">
       <Toast ref={toastRef} />
 
-      <div className="mx-auto w-full max-w-6xl px-6 py-7">
         <div className="mb-5">
           <h1 className="text-3xl font-bold">Antrian</h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -170,18 +168,14 @@ export default function Antrian() {
           </p>
         </div>
 
-        <Card className="shadow-md rounded-2xl">
           <div className="px-2">
             <div className="mb-3 text-sm font-semibold text-gray-700">
               Pemanggilan Antrian
             </div>
 
-            {/* STATISTIK */}
             <AntrianStats summary={summary} />
 
             <Divider />
-
-            {/* GRID */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <AntrianNow
                 now={now}
@@ -201,9 +195,7 @@ export default function Antrian() {
                 onCallNext={handleCallNext}
               />
             </div>
-          </div>
-        </Card>
+         </div>
       </div>
-    </div>
   );
 }
