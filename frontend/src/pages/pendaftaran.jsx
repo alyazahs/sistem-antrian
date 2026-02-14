@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { scanRfid, daftarPengunjung, ambilAntrian, cariNIK } from "../../api";
+import { scanRfid, daftarPengunjung, ambilAntrian, cariNIK } from "../api";
 import { Toast } from "primereact/toast";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
@@ -7,8 +7,8 @@ import { InputText } from "primereact/inputtext";
 import { Message } from "primereact/message";
 import { Divider } from "primereact/divider";
 import { ProgressSpinner } from "primereact/progressspinner";
-import FormPengunjungBaru from "../../components/pengunjungBaru";
-import FormPengunjungDitemukan from "../../components/pengunjungDitemukan";
+import FormPengunjungBaru from "../components/pendaftaran/pengunjungBaru";
+import FormPengunjungDitemukan from "../components/pendaftaran/pengunjungDitemukan";
 
 export default function Pendaftaran() {
   const toastRef = useRef(null);
