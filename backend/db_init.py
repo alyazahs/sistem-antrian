@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS antrian (
   pengunjung_id INTEGER NOT NULL,
   nomor_antrian INTEGER NOT NULL,
   jenis_pelayanan TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'menunggu', -- menunggu | dipanggil | selesai
+  status TEXT NOT NULL DEFAULT 'menunggu', -- menunggu | dipanggil | selesai | dilewati
   created_at TEXT DEFAULT (datetime('now','localtime')),
   FOREIGN KEY (pengunjung_id) REFERENCES pengunjung(id) ON DELETE CASCADE
 );
