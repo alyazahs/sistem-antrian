@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 
 export default function Sidebar({
@@ -5,13 +6,21 @@ export default function Sidebar({
   onNavigate = () => {},
   onLogout = () => {},
 }) {
-  const Item = ({ id, icon, label, indent = false }) => {
+  const activeIsMaster = active.startsWith("master-");
+  const [masterOpen, setMasterOpen] = useState(activeIsMaster);
+
+  useEffect(() => {
+    // kalau sedang berada di halaman master, otomatis buka dropdown
+    if (activeIsMaster) setMasterOpen(true);
+  }, [activeIsMaster]);
+
+  const Item = ({ id, icon, label, indent = false, onClick, showCaret = false }) => {
     const isActive = id === active;
 
     return (
       <button
         type="button"
-        onClick={() => onNavigate(id)}
+        onClick={onClick ? onClick : () => onNavigate(id)}
         className={[
           "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left font-semibold transition",
           indent ? "pl-10 text-[14px]" : "",
@@ -31,12 +40,15 @@ export default function Sidebar({
         ) : (
           <span className="w-[18px]" />
         )}
-        {label}
+
+        <span className="flex-1">{label}</span>
+
+        {showCaret ? (
+          <i className={["pi", masterOpen ? "pi-chevron-up" : "pi-chevron-down", "text-xs"].join(" ")} />
+        ) : null}
       </button>
     );
   };
-
-  const isMasterOpen = active.startsWith("master");
 
   const confirmLogout = () => {
     confirmDialog({
@@ -53,11 +65,7 @@ export default function Sidebar({
   return (
     <aside className="sticky top-0 flex h-screen flex-col overflow-auto border-r border-slate-200 bg-[#D9F1ED] px-4 py-5">
       <div className="mb-4 flex items-center gap-4 border-b border-slate-200 px-2 pb-4">
-        <img
-          src="/image.png"
-          alt="Jiwan Logo"
-          className="h-11 w-11 object-contain"
-        />
+        <img src="/logo-kab.png" alt="Jiwan Logo" className="h-16 w-16 object-contain" />
         <div className="leading-tight">
           <span className="block text-sm font-semibold tracking-tight text-slate-500">
             Kecamatan
@@ -70,9 +78,16 @@ export default function Sidebar({
 
       <nav className="flex flex-col gap-1 px-1">
         <Item id="dashboard" icon="fa-solid fa-chart-pie" label="Dashboard" />
-        <Item id="master-jenis" icon="fa-solid fa-database" label="Master" />
 
-        {isMasterOpen && (
+        <Item
+          id="__master__"
+          icon="fa-solid fa-database"
+          label="Master"
+          onClick={() => setMasterOpen((v) => !v)}
+          showCaret
+        />
+
+        {masterOpen && (
           <div className="mt-1 space-y-1 rounded-xl bg-slate-50 p-1">
             <Item
               id="master-jenis"

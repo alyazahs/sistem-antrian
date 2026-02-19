@@ -7,6 +7,17 @@ DB_PATH = os.path.join(BASE_DIR, "antrian.db")
 SCHEMA = """
 PRAGMA foreign_keys = ON;
 
+-- Tabel user 
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nama TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL CHECK(role IN ('admin_pelayanan','kasi_pelayanan')),
+  status TEXT NOT NULL DEFAULT 'aktif' CHECK(status IN ('aktif','tidak_aktif','cuti')),
+  created_at TEXT DEFAULT (datetime('now','localtime'))
+);
+
 -- MASTER: Jenis Pelayanan (untuk dropdown)
 CREATE TABLE IF NOT EXISTS master_jenis_pelayanan (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

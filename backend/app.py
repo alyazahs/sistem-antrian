@@ -1,23 +1,33 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import sqlite3
+import os
+from functools import wraps
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from werkzeug.security import generate_password_hash, check_password_hash
 from db_init import init_db, DB_PATH
 from rfid_reader import rfid_reader
 from printer_service import printer_service
 from tts_service import tts_service
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
- 
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+
+# SECRET untuk token
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "DEV_SECRET_CHANGE_ME")
+serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
+
 init_db()
 
 def get_db():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
 def _next_nomor_antrian(conn: sqlite3.Connection) -> int:
-    conn.execute("BEGIN IMMEDIATE")  # lock untuk mencegah bentrok
+    # lock untuk mencegah bentrok (aman kalau 2 request barengan)
+    conn.execute("BEGIN IMMEDIATE")
 
     row = conn.execute("SELECT value FROM metadata WHERE key='last_nomor_antrian'").fetchone()
     last_num = int(row["value"]) if row and row["value"] is not None else 0
@@ -29,10 +39,237 @@ def _next_nomor_antrian(conn: sqlite3.Connection) -> int:
     """, (str(next_num),))
     return next_num
 
+# AUTH HELPERS
+def make_token(payload: dict) -> str:
+    return serializer.dumps(payload)
 
+
+def verify_token(token: str, max_age_seconds: int = 60 * 60 * 12):  # 12 jam
+    return serializer.loads(token, max_age=max_age_seconds)
+
+def require_auth(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        auth = request.headers.get("Authorization", "")
+        token = ""
+        if auth.lower().startswith("bearer "):
+            token = auth.split(" ", 1)[1].strip()
+
+        if not token:
+            return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+        try:
+            payload = verify_token(token)
+            request.user = payload
+        except SignatureExpired:
+            return jsonify({"success": False, "message": "Token expired"}), 401
+        except BadSignature:
+            return jsonify({"success": False, "message": "Invalid token"}), 401
+
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+def require_role(*roles):
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            user = getattr(request, "user", None)
+            if not user or user.get("role") not in roles:
+                return jsonify({"success": False, "message": "Forbidden"}), 403
+            return fn(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+def seed_defaults():
+    """Bikin admin default kalau belum ada."""
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT id FROM users WHERE email=?", ("kasi@gmail.com",)).fetchone()
+        if not row:
+            conn.execute("""
+                INSERT INTO users (nama,email,password_hash,role,status)
+                VALUES (?,?,?,?,?)
+            """, (
+                "Kasi Pelayanan",
+                "kasi@gmail.com",
+                generate_password_hash("kasi123"),
+                "kasi_pelayanan",
+                "aktif"
+            ))
+            conn.commit()
+    finally:
+        conn.close()
+
+seed_defaults()
+
+# HEALTH
 @app.get("/")
 def health():
     return jsonify({"status": "ok", "service": "antrian-kecamatan-api"})
+
+# AUTH ENDPOINTS
+@app.post("/api/auth/login")
+def auth_login():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip()
+    password = (data.get("password") or "").strip()
+
+    if not email or not password:
+        return jsonify({"success": False, "message": "Email dan password wajib diisi"}), 400
+
+    conn = get_db()
+    try:
+        user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        if not user:
+            return jsonify({"success": False, "message": "User tidak ditemukan"}), 404
+
+        if user["status"] != "aktif":
+            return jsonify({"success": False, "message": f"Akun {user['status']}"}), 403
+
+        if not check_password_hash(user["password_hash"], password):
+            return jsonify({"success": False, "message": "Password salah"}), 401
+
+        token = make_token({
+            "id": user["id"],
+            "nama": user["nama"],
+            "email": user["email"],
+            "role": user["role"]
+        })
+
+        return jsonify({
+            "success": True,
+            "token": token,
+            "user": {
+                "id": user["id"],
+                "nama": user["nama"],
+                "email": user["email"],
+                "role": user["role"],
+                "status": user["status"],
+            }
+        })
+    finally:
+        conn.close()
+
+@app.get("/api/auth/me")
+@require_auth
+def auth_me():
+    return jsonify({"success": True, "user": request.user})
+
+# USERS CRUD (ADMIN ONLY)
+@app.get("/api/users")
+@require_auth
+@require_role("admin_pelayanan", "kasi_pelayanan")
+def users_list():
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT id, nama, email, role, status, created_at
+            FROM users
+            ORDER BY id DESC
+        """).fetchall()
+        return jsonify({"success": True, "data": [dict(r) for r in rows]})
+    finally:
+        conn.close()
+
+@app.post("/api/users")
+@require_auth
+@require_role("admin_pelayanan", "kasi_pelayanan")
+def users_create():
+    data = request.get_json(silent=True) or {}
+
+    nama = (data.get("nama") or "").strip()
+    email = (data.get("email") or "").strip()
+    password = (data.get("password") or "").strip()
+    role = (data.get("role") or "").strip()
+    status = (data.get("status") or "aktif").strip()
+
+    if not all([nama, email, password, role]):
+        return jsonify({"success": False, "message": "nama, email, role, password wajib"}), 400
+
+    if role not in ("admin_pelayanan", "kasi_pelayanan"):
+        return jsonify({"success": False, "message": "Role tidak valid"}), 400
+
+    if status not in ("aktif", "tidak_aktif", "cuti"):
+        return jsonify({"success": False, "message": "Status tidak valid"}), 400
+
+    conn = get_db()
+    try:
+        try:
+            conn.execute("""
+                INSERT INTO users (nama,email,password_hash,role,status)
+                VALUES (?,?,?,?,?)
+            """, (nama, email, generate_password_hash(password), role, status))
+            conn.commit()
+            return jsonify({"success": True})
+        except sqlite3.IntegrityError:
+            return jsonify({"success": False, "message": "Email sudah digunakan"}), 409
+    finally:
+        conn.close()
+
+@app.put("/api/users/<int:user_id>")
+@require_auth
+@require_role("admin_pelayanan", "kasi_pelayanan")
+def users_update(user_id):
+    data = request.get_json(silent=True) or {}
+    nama = (data.get("nama") or "").strip()
+    role = (data.get("role") or "").strip()
+    status = (data.get("status") or "").strip()
+
+    if role and role not in ("admin_pelayanan", "kasi_pelayanan"):
+        return jsonify({"success": False, "message": "Role tidak valid"}), 400
+
+    if status and status not in ("aktif", "tidak_aktif", "cuti"):
+        return jsonify({"success": False, "message": "Status tidak valid"}), 400
+
+    fields = []
+    params = []
+
+    if nama:
+        fields.append("nama=?"); params.append(nama)
+    if role:
+        fields.append("role=?"); params.append(role)
+    if status:
+        fields.append("status=?"); params.append(status)
+
+    if not fields:
+        return jsonify({"success": False, "message": "Tidak ada data diubah"}), 400
+
+    params.append(user_id)
+
+    conn = get_db()
+    try:
+        cur = conn.execute(f"UPDATE users SET {', '.join(fields)} WHERE id=?", params)
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"success": False, "message": "User tidak ditemukan"}), 404
+        return jsonify({"success": True})
+    finally:
+        conn.close()
+
+@app.put("/api/users/<int:user_id>/password")
+@require_auth
+@require_role("admin_pelayanan", "kasi_pelayanan")
+def users_reset_password(user_id):
+    data = request.get_json(silent=True) or {}
+    password = (data.get("password") or "").strip()
+    if not password:
+        return jsonify({"success": False, "message": "Password wajib"}), 400
+
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "UPDATE users SET password_hash=? WHERE id=?",
+            (generate_password_hash(password), user_id)
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"success": False, "message": "User tidak ditemukan"}), 404
+        return jsonify({"success": True})
+    finally:
+        conn.close()
 
 @app.get("/api/jenis-pelayanan")
 def list_jenis():
@@ -161,7 +398,7 @@ def daftar_pengunjung():
     rfid_uid = clean_str(data.get("rfid_uid"))
     nik      = clean_str(data.get("nik"))
     nama     = (data.get("nama") or "").strip()
-    nohp     = clean_str(data.get("nohp"))      # ✅ aman kalau int
+    nohp     = clean_str(data.get("nohp"))    
     alamat   = clean_str(data.get("alamat"))
 
     umur = data.get("umur")
