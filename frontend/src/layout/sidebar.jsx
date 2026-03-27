@@ -6,6 +6,16 @@ export default function Sidebar({
   onNavigate = () => {},
   onLogout = () => {},
 }) {
+  const [role, setRole] = useState(null);
+
+  useEffect(() => {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        setRole(user.role);
+      }
+    }, []);
+
   const activeIsMaster = active.startsWith("master-");
   const [masterOpen, setMasterOpen] = useState(activeIsMaster);
 
@@ -107,6 +117,9 @@ export default function Sidebar({
         <Item id="pendaftaran" icon="fa-solid fa-id-card" label="Pendaftaran" />
         <Item id="antrian" icon="fa-solid fa-users" label="Antrian" />
         <Item id="laporan" icon="fa-solid fa-file-lines" label="Laporan" />
+        {role === "kasi_pelayanan" && (
+          <Item id="users" icon="fa-solid fa-user-gear" label="Kelola User" />
+        )}
       </nav>
 
       <div className="mt-auto border-t border-slate-200 px-2 pt-4">

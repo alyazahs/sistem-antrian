@@ -161,7 +161,7 @@ def auth_me():
 # USERS CRUD (ADMIN ONLY)
 @app.get("/api/users")
 @require_auth
-@require_role("admin_pelayanan", "kasi_pelayanan")
+@require_role("kasi_pelayanan")
 def users_list():
     conn = get_db()
     try:
@@ -176,7 +176,7 @@ def users_list():
 
 @app.post("/api/users")
 @require_auth
-@require_role("admin_pelayanan", "kasi_pelayanan")
+@require_role("kasi_pelayanan")
 def users_create():
     data = request.get_json(silent=True) or {}
 
@@ -211,7 +211,7 @@ def users_create():
 
 @app.put("/api/users/<int:user_id>")
 @require_auth
-@require_role("admin_pelayanan", "kasi_pelayanan")
+@require_role("kasi_pelayanan")
 def users_update(user_id):
     data = request.get_json(silent=True) or {}
     nama = (data.get("nama") or "").strip()
@@ -251,7 +251,7 @@ def users_update(user_id):
 
 @app.put("/api/users/<int:user_id>/password")
 @require_auth
-@require_role("admin_pelayanan", "kasi_pelayanan")
+@require_role("kasi_pelayanan")
 def users_reset_password(user_id):
     data = request.get_json(silent=True) or {}
     password = (data.get("password") or "").strip()

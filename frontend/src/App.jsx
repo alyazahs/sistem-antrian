@@ -7,6 +7,7 @@ import Antrian from "./pages/antrian";
 import JenisPelayananPage from "./pages/master/jenis_pelayanan/page";
 import IdentitasPage from "./pages/master/identitas/page";
 import Laporan from "./pages/laporan"; 
+import KelolaUsers from "./pages/kelolaUser";
 
 export default function App() {
   return (
@@ -73,6 +74,15 @@ export default function App() {
         element={
           <AppLayout>
             <Laporan />
+          </AppLayout>
+        }
+      />
+
+      <Route
+        path="/users"
+        element={
+          <AppLayout>
+            <KelolaUsers />
           </AppLayout>
         }
       />
