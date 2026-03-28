@@ -35,7 +35,7 @@ export default function AppLayout({
       dashboard: "Dashboard",
       "master-jenis": "Master - Jenis Pelayanan",
       "master-identitas": "Master - Identitas",
-      users: "Manajemen Users",
+      users: "Kelola User",
       pendaftaran: "Pendaftaran Pengunjung",
       antrian: "Antrian",
       laporan: "Laporan",
