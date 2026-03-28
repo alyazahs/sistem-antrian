@@ -7,7 +7,7 @@ import Antrian from "./pages/antrian";
 import JenisPelayananPage from "./pages/master/jenis_pelayanan/page";
 import IdentitasPage from "./pages/master/identitas/page";
 import Laporan from "./pages/laporan"; 
-import KelolaUsers from "./pages/kelolaUser";
+import KelolaUsers from "./pages/kelola_user/page";
 
 export default function App() {
   return (

@@ -103,6 +103,9 @@ export const updateUser = async (id, payload) =>
 export const resetPasswordUser = async (id, payload) =>
   (await api.put(`/users/${id}/password`, payload)).data;
 
+export const deleteUser = async (id) =>
+  (await api.delete(`/users/${id}`)).data;
+
 // PENGUNJUNG
 export const scanRfid = async () =>
   (await api.get("/scan-rfid")).data;
