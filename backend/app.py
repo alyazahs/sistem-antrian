@@ -262,8 +262,27 @@ def users_reset_password(user_id):
     try:
         cur = conn.execute(
             "UPDATE users SET password_hash=? WHERE id=?",
-            (generate_password_hash(password), user_id)
+            (generate_password_hash(password), user_id),
         )
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"success": False, "message": "User tidak ditemukan"}), 404
+        return jsonify({"success": True})
+    finally:
+        conn.close()
+
+
+@app.delete("/api/users/<int:user_id>")
+@require_auth
+@require_role("kasi_pelayanan")
+def users_delete(user_id):
+    current_user = getattr(request, "user", {}) or {}
+    if int(current_user.get("id", 0) or 0) == int(user_id):
+        return jsonify({"success": False, "message": "Tidak bisa menghapus akun yang sedang login"}), 400
+
+    conn = get_db()
+    try:
+        cur = conn.execute("DELETE FROM users WHERE id=?", (user_id,))
         conn.commit()
         if cur.rowcount == 0:
             return jsonify({"success": False, "message": "User tidak ditemukan"}), 404
