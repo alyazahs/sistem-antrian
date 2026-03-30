@@ -143,4 +143,31 @@ export const lewatiAntrian = async (id) =>
 export const panggilUlangAntrian = async (id) =>
   (await api.post(`/antrian/recall/${id}`)).data;
 
+// LAPORAN
+export const listRiwayatPelayanan = async () =>
+  (await api.get("/laporan")).data;
+
+export const deleteRiwayatPelayanan = async (id) =>
+  (await api.delete(`/laporan/${id}`)).data;
+
+export const exportLaporanExcel = async (params = {}) => {
+  const response = await api.get("/laporan/export-excel", {
+    params,
+    responseType: "blob",
+  });
+
+  const blob = new Blob([response.data], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "Laporan_Pelayanan.xlsx";
+  link.click();
+  window.URL.revokeObjectURL(url);
+
+  return true;
+};
+
 export default api;
