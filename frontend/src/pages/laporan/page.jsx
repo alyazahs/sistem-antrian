@@ -210,7 +210,6 @@ export default function LaporanPage() {
           <Button
             label="Export Excel"
             icon="pi pi-download"
-            className="p-button-success"
             onClick={() => setAdjustDialog(true)}
           />
         </div>
