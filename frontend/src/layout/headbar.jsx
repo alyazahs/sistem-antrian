@@ -1,19 +1,24 @@
-import { useEffect, useState } from 'react';
-import { Toolbar } from 'primereact/toolbar';
-import { Avatar } from 'primereact/avatar';
+import { useEffect, useState } from "react";
+import { Toolbar } from "primereact/toolbar";
+import { Avatar } from "primereact/avatar";
+import { getUser } from "../api";
 
 export default function Headbar({ title }) {
-  const [dateStr, setDateStr] = useState('');
+  const [dateStr, setDateStr] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     const now = new Date();
     const options = {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     };
-    setDateStr(now.toLocaleDateString('id-ID', options));
+    setDateStr(now.toLocaleDateString("id-ID", options));
+
+    const user = getUser();
+    setCurrentUser(user);
   }, []);
 
   const left = (
@@ -22,18 +27,32 @@ export default function Headbar({ title }) {
       <span className="text-sm text-gray-500">{dateStr}</span>
     </div>
   );
+
   const right = (
     <div className="flex items-center gap-2">
-      <Avatar image="https://i.pravatar.cc/40?img=12" shape="circle" className="w-[38px] h-[38px]" />
+      <Avatar
+        image="https://i.pravatar.cc/40?img=12"
+        shape="circle"
+        className="w-[38px] h-[38px]"
+      />
       <div className="text-right">
-        <strong className="block text-base">Admin Pelayanan</strong>
-        <small className="block text-xs text-gray-500">Kecamatan Jiwan</small>
+        <strong className="block text-base">
+          {currentUser?.nama || "Pengguna"}
+        </strong>
+        <small className="block text-xs text-gray-500">
+          Kecamatan Jiwan
+        </small>
       </div>
     </div>
   );
+
   return (
     <div className="bg-[#D9F1ED] px-7 py-5 shadow-md flex justify-between items-center relative z-50">
-      <Toolbar left={left} right={right} className="w-full bg-transparent border-none shadow-none" />
+      <Toolbar
+        left={left}
+        right={right}
+        className="w-full bg-transparent border-none shadow-none"
+      />
     </div>
   );
 }
