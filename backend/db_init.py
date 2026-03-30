@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS pengunjung (
   rfid_uid TEXT UNIQUE,         
   nik TEXT UNIQUE,               
   nama TEXT NOT NULL,
-  nohp INTEGER,
+  nohp TEXT,
   umur INTEGER,
   alamat TEXT,
   created_at TEXT DEFAULT (datetime('now','localtime'))
