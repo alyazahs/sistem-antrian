@@ -1,10 +1,13 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import sqlite3
 import os
+from io import BytesIO
+from datetime import datetime
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import generate_password_hash, check_password_hash
+import openpyxl
 from db_init import init_db, DB_PATH
 from rfid_reader import rfid_reader
 from printer_service import printer_service
@@ -26,7 +29,6 @@ def get_db():
     return conn
 
 def _next_nomor_antrian(conn: sqlite3.Connection) -> int:
-    # lock untuk mencegah bentrok (aman kalau 2 request barengan)
     conn.execute("BEGIN IMMEDIATE")
 
     row = conn.execute("SELECT value FROM metadata WHERE key='last_nomor_antrian'").fetchone()
@@ -39,12 +41,23 @@ def _next_nomor_antrian(conn: sqlite3.Connection) -> int:
     """, (str(next_num),))
     return next_num
 
+def format_tanggal_indo(dt_str):
+    try:
+        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+        bulan = [
+            "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+            "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+        ]
+        return f"{dt.day:02d} {bulan[dt.month - 1]} {dt.year}"
+    except Exception:
+        return dt_str
+
+
 # AUTH HELPERS
 def make_token(payload: dict) -> str:
     return serializer.dumps(payload)
 
-
-def verify_token(token: str, max_age_seconds: int = 60 * 60 * 12):  # 12 jam
+def verify_token(token: str, max_age_seconds: int = 60 * 60 * 12):
     return serializer.loads(token, max_age=max_age_seconds)
 
 def require_auth(fn):
@@ -84,7 +97,6 @@ def require_role(*roles):
     return decorator
 
 def seed_defaults():
-    """Bikin admin default kalau belum ada."""
     conn = get_db()
     try:
         row = conn.execute("SELECT id FROM users WHERE email=?", ("kasi@gmail.com",)).fetchone()
@@ -299,7 +311,7 @@ def list_jenis():
             FROM master_jenis_pelayanan
             ORDER BY nama ASC
         """).fetchall()
-        return jsonify([dict(r) for r in rows   ])
+        return jsonify([dict(r) for r in rows])
     finally:
         conn.close()
 
@@ -415,10 +427,10 @@ def daftar_pengunjung():
         return v if v != "" else None
 
     rfid_uid = clean_str(data.get("rfid_uid"))
-    nik      = clean_str(data.get("nik"))
-    nama     = (data.get("nama") or "").strip()
-    nohp     = clean_str(data.get("nohp"))    
-    alamat   = clean_str(data.get("alamat"))
+    nik = clean_str(data.get("nik"))
+    nama = (data.get("nama") or "").strip()
+    nohp = clean_str(data.get("nohp"))
+    alamat = clean_str(data.get("alamat"))
 
     umur = data.get("umur")
     try:
@@ -490,7 +502,6 @@ def ambil_antrian():
             printer_service.print_ticket(nomor, pengunjung["nama"], jenis, None)
         except Exception as e:
             print(f"Failed to print ticket: {e}")
-            
         return jsonify({
             "success": True,
             "nomor_antrian": nomor,
@@ -511,19 +522,31 @@ def antrian_summary():
         """).fetchone()["n"]
 
         menunggu = conn.execute("""
-          SELECT COUNT(*) AS n FROM antrian WHERE status='menunggu'
+          SELECT COUNT(*) AS n
+          FROM antrian
+          WHERE status='menunggu'
+            AND date(created_at) = date('now','localtime')
         """).fetchone()["n"]
 
         dipanggil = conn.execute("""
-          SELECT COUNT(*) AS n FROM antrian WHERE status='dipanggil'
+          SELECT COUNT(*) AS n
+          FROM antrian
+          WHERE status='dipanggil'
+            AND date(created_at) = date('now','localtime')
         """).fetchone()["n"]
 
         selesai = conn.execute("""
-          SELECT COUNT(*) AS n FROM antrian WHERE status='selesai'
+          SELECT COUNT(*) AS n
+          FROM antrian
+          WHERE status='selesai'
+            AND date(created_at) = date('now','localtime')
         """).fetchone()["n"]
-        
+
         skip = conn.execute("""
-          SELECT COUNT(*) AS n FROM antrian WHERE status='dilewati'
+          SELECT COUNT(*) AS n
+          FROM antrian
+          WHERE status='dilewati'
+            AND date(created_at) = date('now','localtime')
         """).fetchone()["n"]
 
         return jsonify({
@@ -546,6 +569,7 @@ def antrian_now():
           FROM antrian a
           JOIN pengunjung p ON p.id = a.pengunjung_id
           WHERE a.status='dipanggil'
+            AND date(a.created_at) = date('now','localtime')
           ORDER BY a.id DESC
           LIMIT 1
         """).fetchone()
@@ -566,6 +590,7 @@ def antrian_list():
           FROM antrian a
           JOIN pengunjung p ON p.id = a.pengunjung_id
           WHERE a.status=?
+            AND date(a.created_at) = date('now','localtime')
           ORDER BY a.created_at ASC
         """, (status,)).fetchall()
 
@@ -580,6 +605,7 @@ def antrian_call_next():
         current = conn.execute("""
           SELECT id FROM antrian
           WHERE status='dipanggil'
+            AND date(created_at) = date('now','localtime')
           LIMIT 1
         """).fetchone()
 
@@ -592,6 +618,7 @@ def antrian_call_next():
         row = conn.execute("""
           SELECT id FROM antrian
           WHERE status='menunggu'
+            AND date(created_at) = date('now','localtime')
           ORDER BY created_at ASC
           LIMIT 1
         """).fetchone()
@@ -684,6 +711,158 @@ def antrian_recall(antrian_id):
             print("TTS Recall Error:", e)
 
         return jsonify({"success": True})
+    finally:
+        conn.close()
+
+# LAPORAN
+@app.get("/api/laporan")
+def list_laporan():
+    keyword = (request.args.get("keyword") or "").strip().lower()
+    tanggal_awal = (request.args.get("tanggal_awal") or "").strip()
+    tanggal_akhir = (request.args.get("tanggal_akhir") or "").strip()
+
+    conn = get_db()
+    try:
+        query = """
+            SELECT
+                a.id,
+                a.created_at AS tanggal_raw,
+                p.nik,
+                p.nama,
+                p.nohp,
+                p.umur,
+                p.alamat,
+                a.jenis_pelayanan AS keperluan
+            FROM antrian a
+            JOIN pengunjung p ON p.id = a.pengunjung_id
+            WHERE a.status = 'selesai'
+        """
+        params = []
+
+        if keyword:
+            query += """
+                AND (
+                    LOWER(COALESCE(p.nik, '')) LIKE ?
+                    OR LOWER(COALESCE(p.nama, '')) LIKE ?
+                    OR LOWER(COALESCE(a.jenis_pelayanan, '')) LIKE ?
+                )
+            """
+            like_keyword = f"%{keyword}%"
+            params.extend([like_keyword, like_keyword, like_keyword])
+
+        if tanggal_awal:
+            query += " AND date(a.created_at) >= date(?) "
+            params.append(tanggal_awal)
+
+        if tanggal_akhir:
+            query += " AND date(a.created_at) <= date(?) "
+            params.append(tanggal_akhir)
+
+        query += " ORDER BY a.created_at DESC "
+
+        rows = conn.execute(query, params).fetchall()
+
+        data = []
+        for r in rows:
+            item = dict(r)
+            item["tanggal_kunjungan"] = format_tanggal_indo(item["tanggal_raw"])
+            data.append(item)
+
+        return jsonify({"success": True, "data": data})
+    finally:
+        conn.close()
+
+@app.delete("/api/laporan/<int:laporan_id>")
+def delete_laporan(laporan_id):
+    conn = get_db()
+    try:
+        cur = conn.execute("DELETE FROM antrian WHERE id=?", (laporan_id,))
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return jsonify({"success": False, "message": "Data laporan tidak ditemukan"}), 404
+
+        return jsonify({"success": True, "message": "Data laporan berhasil dihapus"})
+    finally:
+        conn.close()
+
+@app.get("/api/laporan/export-excel")
+def export_laporan_excel():
+    keyword = (request.args.get("keyword") or "").strip().lower()
+    tanggal_awal = (request.args.get("tanggal_awal") or "").strip()
+    tanggal_akhir = (request.args.get("tanggal_akhir") or "").strip()
+
+    conn = get_db()
+    try:
+        query = """
+            SELECT
+                a.id,
+                a.created_at AS tanggal_raw,
+                p.nik,
+                p.nama,
+                p.nohp,
+                p.umur,
+                p.alamat,
+                a.jenis_pelayanan AS keperluan
+            FROM antrian a
+            JOIN pengunjung p ON p.id = a.pengunjung_id
+            WHERE a.status = 'selesai'
+        """
+        params = []
+
+        if keyword:
+            query += """
+                AND (
+                    LOWER(COALESCE(p.nik, '')) LIKE ?
+                    OR LOWER(COALESCE(p.nama, '')) LIKE ?
+                    OR LOWER(COALESCE(a.jenis_pelayanan, '')) LIKE ?
+                )
+            """
+            like_keyword = f"%{keyword}%"
+            params.extend([like_keyword, like_keyword, like_keyword])
+
+        if tanggal_awal:
+            query += " AND date(a.created_at) >= date(?) "
+            params.append(tanggal_awal)
+
+        if tanggal_akhir:
+            query += " AND date(a.created_at) <= date(?) "
+            params.append(tanggal_akhir)
+
+        query += " ORDER BY a.created_at DESC "
+
+        rows = conn.execute(query, params).fetchall()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Laporan Pelayanan"
+
+        headers = ["No", "Tanggal", "NIK", "Nama", "No HP", "Umur", "Alamat", "Keperluan"]
+        ws.append(headers)
+
+        for idx, r in enumerate(rows, start=1):
+            row = dict(r)
+            ws.append([
+                idx,
+                format_tanggal_indo(row["tanggal_raw"]),
+                row.get("nik"),
+                row.get("nama"),
+                row.get("nohp"),
+                row.get("umur"),
+                row.get("alamat"),
+                row.get("keperluan"),
+            ])
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name="Laporan_Pelayanan.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
     finally:
         conn.close()
 
