@@ -5,6 +5,7 @@ import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 const API_JENIS = `${API_BASE}/api/jenis-pelayanan`;
@@ -15,39 +16,81 @@ export default function FormPengunjungDitemukan({
   onSubmit,
   data,
 }) {
-  const [kebutuhan, setKebutuhan] = useState(null); // {id,nama}
+  const [kebutuhan, setKebutuhan] = useState(null);
   const [opsiJenis, setOpsiJenis] = useState([]);
   const [loadingJenis, setLoadingJenis] = useState(false);
+
+  const [showDialogJenis, setShowDialogJenis] = useState(false);
+  const [jenisBaru, setJenisBaru] = useState("");
+  const [savingJenis, setSavingJenis] = useState(false);
 
   useEffect(() => {
     setKebutuhan(null);
   }, [data?.id, data?.nik, data?.rfid_uid]);
 
+  const loadJenis = async () => {
+    setLoadingJenis(true);
+    try {
+      const res = await axios.get(API_JENIS);
+      const arr = Array.isArray(res.data) ? res.data : res.data.data || [];
+      setOpsiJenis(arr.map((x) => ({ id: x.id, nama: x.nama })));
+    } catch (e) {
+      console.error("Gagal ambil jenis pelayanan:", e);
+    } finally {
+      setLoadingJenis(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      setLoadingJenis(true);
-      try {
-        const res = await axios.get(API_JENIS);
-        const arr = Array.isArray(res.data) ? res.data : res.data.data || [];
-        setOpsiJenis(arr.map((x) => ({ id: x.id, nama: x.nama })));
-      } catch (e) {
-        console.error("Gagal ambil jenis pelayanan:", e);
-      } finally {
-        setLoadingJenis(false);
-      }
-    })();
+    loadJenis();
   }, []);
 
   const submit = () => {
     onSubmit({
       jenis_pelayanan: kebutuhan?.nama,
+      jenis_pelayanan_id: kebutuhan?.id ?? null,
     });
+  };
+
+  const handleTambahJenis = async () => {
+    const nama = jenisBaru.trim();
+    if (!nama) return;
+
+    setSavingJenis(true);
+    try {
+      const res = await axios.post(API_JENIS, { nama });
+
+      const newItem =
+        res?.data?.data ||
+        res?.data || {
+          id: null,
+          nama,
+        };
+
+      await loadJenis();
+
+      // pilih otomatis data baru
+      setKebutuhan({
+        id: newItem.id,
+        nama: newItem.nama || nama,
+      });
+
+      setJenisBaru("");
+      setShowDialogJenis(false);
+      alert("Jenis pelayanan berhasil ditambahkan.");
+    } catch (e) {
+      console.error("Gagal tambah jenis pelayanan:", e);
+      alert(
+        e?.response?.data?.message || "Gagal menambahkan jenis pelayanan."
+      );
+    } finally {
+      setSavingJenis(false);
+    }
   };
 
   return (
     <div className="mt-5">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.2fr_1fr]">
-        {/* Kiri */}
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-600">
@@ -86,7 +129,6 @@ export default function FormPengunjungDitemukan({
           </div>
         </div>
 
-        {/* Kanan */}
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-600">
@@ -118,23 +160,33 @@ export default function FormPengunjungDitemukan({
               Jenis Pelayanan
             </label>
 
-            <Dropdown
-              value={kebutuhan}
-              options={opsiJenis}
-              optionLabel="nama"
-              placeholder={loadingJenis ? "Memuat..." : "Pilih jenis pelayanan"}
-              onChange={(e) => setKebutuhan(e.value)}
-              className="mt-2 w-full"
-              disabled={loading || loadingJenis}
-              showClear
-              filter
-              filterPlaceholder="Cari jenis..."
-            />
+            <div className="mt-2 flex gap-2">
+              <Dropdown
+                value={kebutuhan}
+                options={opsiJenis}
+                optionLabel="nama"
+                placeholder={loadingJenis ? "Memuat..." : "Pilih jenis pelayanan"}
+                onChange={(e) => setKebutuhan(e.value)}
+                className="w-full"
+                disabled={loading || loadingJenis}
+                showClear
+                filter
+                filterPlaceholder="Cari jenis..."
+              />
+
+              <Button
+                type="button"
+                icon="pi pi-plus"
+                outlined
+                tooltip="Tambah jenis pelayanan"
+                onClick={() => setShowDialogJenis(true)}
+                disabled={loading || loadingJenis}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Aksi */}
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
         <Button
           type="button"
@@ -157,12 +209,59 @@ export default function FormPengunjungDitemukan({
         />
       </div>
 
-      {/* Hint kecil */}
       {!kebutuhan && (
         <div className="mt-3 text-center text-xs text-slate-500">
           Pilih <span className="font-semibold">Jenis Pelayanan</span> dulu untuk melanjutkan.
         </div>
       )}
+
+      <Dialog
+        header="Tambah Jenis Pelayanan"
+        visible={showDialogJenis}
+        style={{ width: "28rem" }}
+        onHide={() => {
+          if (!savingJenis) {
+            setShowDialogJenis(false);
+            setJenisBaru("");
+          }
+        }}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Nama Jenis Pelayanan
+            </label>
+            <InputText
+              value={jenisBaru}
+              onChange={(e) => setJenisBaru(e.target.value)}
+              className="mt-2 w-full"
+              placeholder="Legalisasi Dokumen"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              label="Batal"
+              severity="secondary"
+              outlined
+              onClick={() => {
+                setShowDialogJenis(false);
+                setJenisBaru("");
+              }}
+              disabled={savingJenis}
+            />
+            <Button
+              type="button"
+              label={savingJenis ? "Menyimpan..." : "Simpan"}
+              icon={savingJenis ? "pi pi-spin pi-spinner" : "pi pi-check"}
+              onClick={handleTambahJenis}
+              disabled={savingJenis || !jenisBaru.trim()}
+            />
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }
