@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Dropdown } from "primereact/dropdown";
+import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
@@ -21,11 +22,14 @@ export default function FormPengunjungBaru({
     nohp: "",
     umur: null,
     alamat: "",
-    jenis_pelayanan: null, 
+    jenis_pelayanan: null,
   });
 
   const [opsiJenis, setOpsiJenis] = useState([]);
   const [loadingJenis, setLoadingJenis] = useState(false);
+  const [showDialogJenis, setShowDialogJenis] = useState(false);
+  const [jenisBaru, setJenisBaru] = useState("");
+  const [savingJenis, setSavingJenis] = useState(false);
 
   useEffect(() => {
     if (nikAwal && !form.nik) {
@@ -33,20 +37,54 @@ export default function FormPengunjungBaru({
     }
   }, [nikAwal]);
 
+  const loadJenis = async () => {
+    setLoadingJenis(true);
+    try {
+      const res = await axios.get(API);
+      const arr = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setOpsiJenis(arr.map((x) => ({ id: x.id, nama: x.nama })));
+    } catch (e) {
+      console.error("Gagal ambil jenis pelayanan:", e);
+    } finally {
+      setLoadingJenis(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      setLoadingJenis(true);
-      try {
-        const res = await axios.get(API);
-        const arr = Array.isArray(res.data) ? res.data : res.data?.data || [];
-        setOpsiJenis(arr.map((x) => ({ id: x.id, nama: x.nama })));
-      } catch (e) {
-        console.error("Gagal ambil jenis pelayanan:", e);
-      } finally {
-        setLoadingJenis(false);
-      }
-    })();
+    loadJenis();
   }, []);
+
+  const handleTambahJenis = async () => {
+    const nama = jenisBaru.trim();
+    if (!nama) return;
+
+    setSavingJenis(true);
+    try {
+      const res = await axios.post(API, { nama });
+
+      const newItem = res?.data?.data || res?.data || { id: null, nama };
+
+      await loadJenis();
+
+      setForm((prev) => ({
+        ...prev,
+        jenis_pelayanan: {
+          id: newItem.id,
+          nama: newItem.nama || nama,
+        },
+      }));
+
+      setJenisBaru("");
+      setShowDialogJenis(false);
+    } catch (e) {
+      console.error("Gagal tambah jenis pelayanan:", e);
+      alert(
+        e?.response?.data?.message || "Gagal menambahkan jenis pelayanan."
+      );
+    } finally {
+      setSavingJenis(false);
+    }
+  };
 
   const submit = () => {
     onSubmit({
@@ -61,7 +99,6 @@ export default function FormPengunjungBaru({
   return (
     <div className="mt-5">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.2fr_1fr]">
-        {/* KIRI */}
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-600">
@@ -101,7 +138,6 @@ export default function FormPengunjungBaru({
           </div>
         </div>
 
-        {/* KANAN */}
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-600">
@@ -135,24 +171,36 @@ export default function FormPengunjungBaru({
             <label className="block text-xs font-semibold text-slate-600">
               Jenis Pelayanan
             </label>
-            <Dropdown
-              value={form.jenis_pelayanan}
-              options={opsiJenis}
-              optionLabel="nama"
-              placeholder={loadingJenis ? "Memuat..." : "Pilih jenis pelayanan"}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, jenis_pelayanan: e.value }))
-              }
-              className="mt-2 w-full"
-              disabled={disabledAll}
-              showClear
-              filter
-            />
+
+            <div className="mt-2 flex gap-2">
+              <Dropdown
+                value={form.jenis_pelayanan}
+                options={opsiJenis}
+                optionLabel="nama"
+                placeholder={loadingJenis ? "Memuat..." : "Pilih jenis pelayanan"}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, jenis_pelayanan: e.value }))
+                }
+                className="w-full"
+                disabled={disabledAll}
+                showClear
+                filter
+                filterPlaceholder="Cari jenis..."
+              />
+
+              <Button
+                type="button"
+                icon="pi pi-plus"
+                outlined
+                tooltip="Tambah jenis pelayanan"
+                onClick={() => setShowDialogJenis(true)}
+                disabled={disabledAll}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* AKSI */}
       <div className="mt-6 flex justify-center gap-5">
         <Button
           label="Batal"
@@ -175,6 +223,54 @@ export default function FormPengunjungBaru({
           }
         />
       </div>
+
+      <Dialog
+        header="Tambah Jenis Pelayanan"
+        visible={showDialogJenis}
+        style={{ width: "28rem" }}
+        onHide={() => {
+          if (!savingJenis) {
+            setShowDialogJenis(false);
+            setJenisBaru("");
+          }
+        }}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Nama Jenis Pelayanan
+            </label>
+            <InputText
+              value={jenisBaru}
+              onChange={(e) => setJenisBaru(e.target.value)}
+              className="mt-2 w-full"
+              placeholder="Legalisasi Dokumen"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              label="Batal"
+              severity="secondary"
+              outlined
+              onClick={() => {
+                setShowDialogJenis(false);
+                setJenisBaru("");
+              }}
+              disabled={savingJenis}
+            />
+            <Button
+              type="button"
+              label={savingJenis ? "Menyimpan..." : "Simpan"}
+              icon={savingJenis ? "pi pi-spin pi-spinner" : "pi pi-check"}
+              onClick={handleTambahJenis}
+              disabled={savingJenis || !jenisBaru.trim()}
+            />
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }
