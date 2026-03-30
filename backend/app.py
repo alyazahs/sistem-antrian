@@ -677,14 +677,17 @@ def antrian_skip(antrian_id):
     try:
         cur = conn.execute("""
           UPDATE antrian
-          SET status='menunggu',
-              created_at=datetime('now','localtime')
+          SET status='dilewati'
           WHERE id=?
+            AND status='dipanggil'
         """, (antrian_id,))
         conn.commit()
 
         if cur.rowcount == 0:
-            return jsonify({"success": False, "message": "Antrian tidak ditemukan"}), 404
+            return jsonify({
+                "success": False,
+                "message": "Antrian tidak ditemukan atau tidak sedang dipanggil"
+            }), 404
 
         return jsonify({"success": True})
     finally:

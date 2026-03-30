@@ -128,11 +128,14 @@ export default function Antrian() {
     setBusyAction(true);
     try {
       await lewatiAntrian(now.id);
-      showToast("warn", "Antrian dikembalikan ke daftar tunggu.");
+      showToast("warn", "Antrian dilewati.");
       await refreshAll(true);
     } catch (e) {
       console.error(e);
-      showToast("error", "Gagal melewati antrian.");
+      showToast(
+        "error",
+        e?.response?.data?.message || "Gagal melewati antrian."
+      );
     } finally {
       setBusyAction(false);
     }
