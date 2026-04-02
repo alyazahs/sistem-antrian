@@ -170,4 +170,14 @@ export const exportLaporanExcel = async (params = {}) => {
   return true;
 };
 
+// DASHBOARD
+export const dashboardSummary = async () =>
+  (await api.get("/dashboard")).data;
+
+export const dashboardChart = async (tahun) =>
+  (await api.get("/dashboard/chart", { params: { tahun } })).data;
+
+export const dashboardRecent = async (limit = 5) =>
+  (await api.get("/dashboard/recent", { params: { limit } })).data;
+
 export default api;
