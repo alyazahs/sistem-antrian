@@ -979,9 +979,10 @@ def dashboard_summary():
             FROM pengunjung
         """).fetchone()["n"]
 
-        total_antrian = conn.execute("""
+        total_dilayani = conn.execute("""
             SELECT COUNT(*) AS n
             FROM antrian
+            WHERE status = 'selesai'
         """).fetchone()["n"]
 
         total_layanan = conn.execute("""
@@ -1000,7 +1001,7 @@ def dashboard_summary():
             "success": True,
             "cards": {
                 "total_pengunjung": total_pengunjung or 0,
-                "total_antrian": total_antrian or 0,
+                "total_dilayani": total_dilayani or 0,
                 "total_layanan": total_layanan or 0,
                 "total_pengunjung_bulan_ini": total_pengunjung_bulan_ini or 0,
             }

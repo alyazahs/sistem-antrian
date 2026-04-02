@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [summary, setSummary] = useState({
     cards: {
       total_pengunjung: 0,
-      total_antrian: 0,
+      total_dilayani: 0,
       total_layanan: 0,
       total_pengunjung_bulan_ini: 0,
     },
@@ -44,7 +44,7 @@ export default function Dashboard() {
       setSummary({
         cards: {
           total_pengunjung: sumRes?.cards?.total_pengunjung ?? 0,
-          total_antrian: sumRes?.cards?.total_antrian ?? 0,
+          total_dilayani: sumRes?.cards?.total_dilayani ?? 0,
           total_layanan: sumRes?.cards?.total_layanan ?? 0,
           total_pengunjung_bulan_ini: sumRes?.cards?.total_pengunjung_bulan_ini ?? 0,
         },
@@ -127,8 +127,8 @@ export default function Dashboard() {
       color: "#8b7cf6",
     },
     {
-      title: "Total Antrian",
-      value: summary.cards.total_antrian,
+      title: "Total Dilayani",
+      value: summary.cards.total_dilayani,
       icon: "pi pi-ticket",
       bg: "#fef3c7",
       color: "#eab308",
