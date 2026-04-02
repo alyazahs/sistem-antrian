@@ -10,12 +10,16 @@ import {
 } from "../api";
 import { Toast } from "primereact/toast";
 import { Divider } from "primereact/divider";
+import { Button } from "primereact/button";
 import AntrianStats from "../components/antrian/antrianStats";
 import AntrianNow from "../components/antrian/antrianNow";
 import AntrianList from "../components/antrian/antrianList";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function Antrian() {
   const toastRef = useRef(null);
+  const eventSourceRef = useRef(null);
 
   const showToast = (severity, detail) => {
     toastRef.current?.show({
@@ -46,7 +50,6 @@ export default function Antrian() {
   const [now, setNow] = useState(null);
   const [list, setList] = useState([]);
 
-  // REFRESH DATA
   const refreshAll = async (silent = false) => {
     if (!silent) setLoading(true);
 
@@ -76,11 +79,34 @@ export default function Antrian() {
     }
   };
 
-  // polling setiap 2 detik
   useEffect(() => {
     refreshAll(false);
-    const interval = setInterval(() => refreshAll(true), 2000);
-    return () => clearInterval(interval);
+
+    const es = new EventSource(`${API_URL}/api/antrian/stream`);
+    eventSourceRef.current = es;
+
+    es.onopen = () => {
+      console.log("SSE antrian connected");
+    };
+
+    es.onmessage = async (event) => {
+      try {
+        JSON.parse(event.data);
+        if (document.visibilityState === "visible") {
+          await refreshAll(true);
+        }
+      } catch (e) {
+        console.error("SSE parse error:", e);
+      }
+    };
+
+    es.onerror = () => {
+      console.error("SSE antrian disconnected");
+    };
+
+    return () => {
+      es.close();
+    };
   }, []);
 
   const handleCallNext = async () => {
@@ -89,17 +115,13 @@ export default function Antrian() {
     setBusyAction(true);
     try {
       const res = await panggilAntrianBerikutnya();
-      showToast(
-        "success",
-        `Memanggil antrian: ${res?.nomor_antrian ?? "-"}`
-      );
+      showToast("success", `Memanggil antrian: ${res?.nomor_antrian ?? "-"}`);
       await refreshAll(true);
     } catch (e) {
       console.error(e);
       showToast(
         "error",
-        e?.response?.data?.message ||
-          "Gagal memanggil antrian berikutnya."
+        e?.response?.data?.message || "Gagal memanggil antrian berikutnya."
       );
     } finally {
       setBusyAction(false);
@@ -157,48 +179,57 @@ export default function Antrian() {
   };
 
   const openDisplay = () => {
-    window.open("/display-antrian", "_blank");
+    window.open("/displayAntrian", "_blank");
   };
 
   return (
     <div className="card">
       <Toast ref={toastRef} />
 
-        <div className="mb-5">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
           <h1 className="text-3xl font-bold">Antrian</h1>
           <p className="mt-1 text-sm text-slate-500">
             Pemanggilan antrian & monitoring status pelayanan.
           </p>
         </div>
 
-          <div className="px-2">
-            <div className="mb-3 text-sm font-semibold text-gray-700">
-              Pemanggilan Antrian
-            </div>
-
-            <AntrianStats summary={summary} />
-
-            <Divider />
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <AntrianNow
-                now={now}
-                busyAction={busyAction}
-                onRecall={handleRecall}
-                onSelesai={handleSelesai}
-                onLewati={handleLewati}
-                onCallNext={handleCallNext}
-                loading={loading}
-                onOpenDisplay={openDisplay}
-              />
-
-              <AntrianList
-                list={list}
-                loading={loading}
-                busyAction={busyAction}
-                onCallNext={handleCallNext}
-              />
-            </div>
-         </div>
+        <Button
+          type="button"
+          label="Display Antrian"
+          icon="pi pi-external-link"
+          onClick={openDisplay}
+        />
       </div>
+
+      <div className="px-2">
+        <div className="mb-3 text-sm font-semibold text-gray-700">
+          Pemanggilan Antrian
+        </div>
+
+        <AntrianStats summary={summary} />
+
+        <Divider />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <AntrianNow
+            now={now}
+            busyAction={busyAction}
+            onRecall={handleRecall}
+            onSelesai={handleSelesai}
+            onLewati={handleLewati}
+            onCallNext={handleCallNext}
+            loading={loading}
+            onOpenDisplay={openDisplay}
+          />
+
+          <AntrianList
+            list={list}
+            loading={loading}
+            busyAction={busyAction}
+            onCallNext={handleCallNext}
+          />
+        </div>
+      </div>
+    </div>
   );
 }

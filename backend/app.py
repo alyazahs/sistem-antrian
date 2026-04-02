@@ -12,9 +12,14 @@ from db_init import init_db, DB_PATH
 from rfid_reader import rfid_reader
 from printer_service import printer_service
 from tts_service import tts_service
+from flask import Flask, jsonify, request, send_file, Response, stream_with_context
+import json
+from queue import Queue
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+
+listeners = set()
 
 # SECRET untuk token
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "DEV_SECRET_CHANGE_ME")
@@ -29,17 +34,13 @@ def get_db():
     return conn
 
 def _next_nomor_antrian(conn: sqlite3.Connection) -> int:
-    conn.execute("BEGIN IMMEDIATE")
+    row = conn.execute("""
+        SELECT COALESCE(MAX(nomor_antrian), 0) AS last_no
+        FROM antrian
+        WHERE date(created_at) = date('now', 'localtime')
+    """).fetchone()
 
-    row = conn.execute("SELECT value FROM metadata WHERE key='last_nomor_antrian'").fetchone()
-    last_num = int(row["value"]) if row and row["value"] is not None else 0
-    next_num = last_num + 1
-
-    conn.execute("""
-      INSERT INTO metadata(key,value) VALUES('last_nomor_antrian', ?)
-      ON CONFLICT(key) DO UPDATE SET value=excluded.value
-    """, (str(next_num),))
-    return next_num
+    return (row["last_no"] or 0) + 1
 
 def format_tanggal_indo(dt_str):
     try:
@@ -52,6 +53,68 @@ def format_tanggal_indo(dt_str):
     except Exception:
         return dt_str
 
+def build_display_payload():
+    conn = get_db()
+    try:
+        summary = conn.execute("""
+          SELECT
+            COUNT(*) AS total_hari_ini,
+            SUM(CASE WHEN status='menunggu' THEN 1 ELSE 0 END) AS menunggu,
+            SUM(CASE WHEN status='dipanggil' THEN 1 ELSE 0 END) AS dipanggil,
+            SUM(CASE WHEN status='selesai' THEN 1 ELSE 0 END) AS dilayani,
+            SUM(CASE WHEN status='dilewati' THEN 1 ELSE 0 END) AS dilewati
+          FROM antrian
+          WHERE date(created_at) = date('now','localtime')
+        """).fetchone()
+
+        current = conn.execute("""
+          SELECT a.id, a.nomor_antrian, a.jenis_pelayanan, a.status,
+                 p.nama, p.nik
+          FROM antrian a
+          JOIN pengunjung p ON p.id = a.pengunjung_id
+          WHERE a.status='dipanggil'
+            AND date(a.created_at) = date('now','localtime')
+          ORDER BY a.id DESC
+          LIMIT 1
+        """).fetchone()
+
+        next_queue = conn.execute("""
+          SELECT a.id, a.nomor_antrian, a.jenis_pelayanan, a.status,
+                 p.nama
+          FROM antrian a
+          JOIN pengunjung p ON p.id = a.pengunjung_id
+          WHERE a.status='menunggu'
+            AND date(a.created_at) = date('now','localtime')
+          ORDER BY a.created_at ASC
+          LIMIT 1
+        """).fetchone()
+
+        return {
+            "summary": {
+                "total_hari_ini": summary["total_hari_ini"] or 0,
+                "menunggu": summary["menunggu"] or 0,
+                "dipanggil": summary["dipanggil"] or 0,
+                "dilayani": summary["dilayani"] or 0,
+                "dilewati": summary["dilewati"] or 0,
+            },
+            "current": dict(current) if current else None,
+            "next": dict(next_queue) if next_queue else None,
+        }
+    finally:
+        conn.close()
+
+def broadcast_display_update():
+    payload = json.dumps(build_display_payload())
+    dead = []
+
+    for q in listeners:
+        try:
+            q.put(payload)
+        except Exception:
+            dead.append(q)
+
+    for q in dead:
+        listeners.discard(q)
 
 # AUTH HELPERS
 def make_token(payload: dict) -> str:
@@ -498,6 +561,8 @@ def ambil_antrian():
         """, (pengunjung["id"], nomor, jenis))
         conn.commit()
 
+        broadcast_display_update()
+        
         try:
             printer_service.print_ticket(nomor, pengunjung["nama"], jenis, None)
         except Exception as e:
@@ -634,6 +699,8 @@ def antrian_call_next():
           WHERE id=?
         """, (antrian_id,))
         conn.commit()
+        
+        broadcast_display_update()
 
         data = conn.execute("""
         SELECT a.id, a.nomor_antrian, a.jenis_pelayanan, a.status,
@@ -663,6 +730,8 @@ def antrian_serve(antrian_id):
           WHERE id=?
         """, (antrian_id,))
         conn.commit()
+        
+        broadcast_display_update()
 
         if cur.rowcount == 0:
             return jsonify({"success": False, "message": "Antrian tidak ditemukan"}), 404
@@ -682,6 +751,8 @@ def antrian_skip(antrian_id):
             AND status='dipanggil'
         """, (antrian_id,))
         conn.commit()
+        
+        broadcast_display_update()
 
         if cur.rowcount == 0:
             return jsonify({
@@ -716,6 +787,35 @@ def antrian_recall(antrian_id):
         return jsonify({"success": True})
     finally:
         conn.close()
+        
+@app.get("/api/antrian/display")
+def antrian_display():
+    return jsonify(build_display_payload())
+
+
+@app.get("/api/antrian/stream")
+def antrian_stream():
+    def event_stream():
+        q = Queue()
+        listeners.add(q)
+
+        try:
+            yield f"data: {json.dumps(build_display_payload())}\n\n"
+            while True:
+                data = q.get()
+                yield f"data: {data}\n\n"
+        finally:
+            listeners.discard(q)
+
+    return Response(
+        stream_with_context(event_stream()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 # LAPORAN
 @app.get("/api/laporan")

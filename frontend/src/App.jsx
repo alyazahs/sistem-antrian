@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "./layout/layout";
 import Login from "./pages/login";
+import DisplayAntrian from "./pages/displayAntrian";
 import Dashboard from "./pages/dashboard"; 
 import Pendaftaran from "./pages/pendaftaran";
 import Antrian from "./pages/antrian";
@@ -13,6 +14,11 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+
+    <Route
+        path="/displayAntrian"
+        element={<DisplayAntrian />}
+      />
 
       <Route
         path="/dashboard"
