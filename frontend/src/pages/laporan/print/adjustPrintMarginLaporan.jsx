@@ -99,7 +99,7 @@ export default function AdjustPrintMarginLaporan({
 
     autoTable(doc, {
       startY,
-      head: [['No', 'Tanggal', 'NIK', 'No HP', 'Nama', 'Keperluan']],
+      head: [['No', 'Tanggal', 'NIK', 'No HP', 'Nama', 'Keperluan', 'Petugas']],
       body: dataLaporan.map((item, index) => [
         index + 1,
         item.tanggal_kunjungan || "",
@@ -107,6 +107,7 @@ export default function AdjustPrintMarginLaporan({
         item.nohp || "",
         item.nama || "",
         item.keperluan || "",
+        item.petugas_nama || "",
       ]),
       margin: { left: marginLeft, right: marginRight },
       styles: { fontSize: 9, cellPadding: 2 },

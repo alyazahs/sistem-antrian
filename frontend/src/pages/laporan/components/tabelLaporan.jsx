@@ -27,6 +27,7 @@ const TabelLaporan = ({ data, loading, onDetail, onDelete }) => {
         <Column field="nik" header="NIK" sortable />
         <Column field="nama" header="Nama" sortable />
         <Column field="keperluan" header="Keperluan" sortable />
+        <Column field="petugas_nama" header="Ditangani Oleh" sortable />
 
         <Column
           header="Aksi"

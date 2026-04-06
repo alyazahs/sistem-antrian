@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS master_jenis_pelayanan (
 -- Tabel data pengunjung (master)
 CREATE TABLE IF NOT EXISTS pengunjung (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  rfid_uid TEXT UNIQUE,         
-  nik TEXT UNIQUE,               
+  rfid_uid TEXT UNIQUE,
+  nik TEXT UNIQUE,
   nama TEXT NOT NULL,
   nohp TEXT,
   umur INTEGER,
@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS antrian (
   nomor_antrian INTEGER NOT NULL,
   jenis_pelayanan TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'menunggu', -- menunggu | dipanggil | selesai | dilewati
+  handled_by_user_id INTEGER,
+  handled_by_nama TEXT,
   created_at TEXT DEFAULT (datetime('now','localtime')),
   FOREIGN KEY (pengunjung_id) REFERENCES pengunjung(id) ON DELETE CASCADE
 );
@@ -56,10 +58,25 @@ CREATE TABLE IF NOT EXISTS metadata (
 );
 """
 
+def ensure_column_exists(conn, table_name, column_name, column_def):
+    rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    existing_columns = [row[1] for row in rows]
+
+    if column_name not in existing_columns:
+        conn.execute(
+            f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}"
+        )
+        conn.commit()
+
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     try:
         conn.executescript(SCHEMA)
+
+        # migration untuk database lama
+        ensure_column_exists(conn, "antrian", "handled_by_user_id", "INTEGER")
+        ensure_column_exists(conn, "antrian", "handled_by_nama", "TEXT")
+
         conn.commit()
     finally:
         conn.close()

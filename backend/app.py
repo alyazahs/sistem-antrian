@@ -721,22 +721,41 @@ def antrian_call_next():
         conn.close()
 
 @app.post("/api/antrian/serve/<int:antrian_id>")
+@require_auth
 def antrian_serve(antrian_id):
+    user = getattr(request, "user", {}) or {}
+
     conn = get_db()
     try:
         cur = conn.execute("""
           UPDATE antrian
-          SET status='selesai'
+          SET status='selesai',
+              handled_by_user_id=?,
+              handled_by_nama=?
           WHERE id=?
-        """, (antrian_id,))
+            AND status='dipanggil'
+        """, (
+            user.get("id"),
+            user.get("nama"),
+            antrian_id,
+        ))
         conn.commit()
-        
+
         broadcast_display_update()
 
         if cur.rowcount == 0:
-            return jsonify({"success": False, "message": "Antrian tidak ditemukan"}), 404
+            return jsonify({
+                "success": False,
+                "message": "Antrian tidak ditemukan atau tidak sedang dipanggil"
+            }), 404
 
-        return jsonify({"success": True})
+        return jsonify({
+            "success": True,
+            "handled_by": {
+                "id": user.get("id"),
+                "nama": user.get("nama"),
+            }
+        })
     finally:
         conn.close()
 
@@ -835,7 +854,9 @@ def list_laporan():
                 p.nohp,
                 p.umur,
                 p.alamat,
-                a.jenis_pelayanan AS keperluan
+                a.jenis_pelayanan AS keperluan,
+                a.handled_by_user_id,
+                a.handled_by_nama AS petugas_nama
             FROM antrian a
             JOIN pengunjung p ON p.id = a.pengunjung_id
             WHERE a.status = 'selesai'
@@ -940,7 +961,7 @@ def export_laporan_excel():
         ws = wb.active
         ws.title = "Laporan Pelayanan"
 
-        headers = ["No", "Tanggal", "NIK", "Nama", "No HP", "Umur", "Alamat", "Keperluan"]
+        headers = ["No", "Tanggal", "NIK", "Nama", "No HP", "Umur", "Alamat", "Keperluan", "Petugas"]
         ws.append(headers)
 
         for idx, r in enumerate(rows, start=1):
@@ -954,6 +975,7 @@ def export_laporan_excel():
                 row.get("umur"),
                 row.get("alamat"),
                 row.get("keperluan"),
+                row.get("petugas_nama"),
             ])
 
         output = BytesIO()
