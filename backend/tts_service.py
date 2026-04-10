@@ -10,7 +10,11 @@ class TTSService:
         self.queue = queue.Queue()
         self.lang = 'id'
         # Initialize pygame mixer
-        pygame.mixer.init()
+        try:
+            pygame.mixer.init()
+        except Exception as e:
+            print(f"Error initializing pygame mixer: {e}")
+
         self.worker_thread = threading.Thread(target=self._worker, daemon=True)
         self.worker_thread.start()
 
