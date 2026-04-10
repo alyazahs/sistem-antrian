@@ -852,10 +852,9 @@ def list_laporan():
                 p.nik,
                 p.nama,
                 p.nohp,
-                p.umur,
-                p.alamat,
+                p.umur, 
+                p.alamat,               
                 a.jenis_pelayanan AS keperluan,
-                a.handled_by_user_id,
                 a.handled_by_nama AS petugas_nama
             FROM antrian a
             JOIN pengunjung p ON p.id = a.pengunjung_id
@@ -907,87 +906,6 @@ def delete_laporan(laporan_id):
             return jsonify({"success": False, "message": "Data laporan tidak ditemukan"}), 404
 
         return jsonify({"success": True, "message": "Data laporan berhasil dihapus"})
-    finally:
-        conn.close()
-
-@app.get("/api/laporan/export-excel")
-def export_laporan_excel():
-    keyword = (request.args.get("keyword") or "").strip().lower()
-    tanggal_awal = (request.args.get("tanggal_awal") or "").strip()
-    tanggal_akhir = (request.args.get("tanggal_akhir") or "").strip()
-
-    conn = get_db()
-    try:
-        query = """
-            SELECT
-                a.id,
-                a.created_at AS tanggal_raw,
-                p.nik,
-                p.nama,
-                p.nohp,
-                p.umur,
-                p.alamat,
-                a.jenis_pelayanan AS keperluan
-            FROM antrian a
-            JOIN pengunjung p ON p.id = a.pengunjung_id
-            WHERE a.status = 'selesai'
-        """
-        params = []
-
-        if keyword:
-            query += """
-                AND (
-                    LOWER(COALESCE(p.nik, '')) LIKE ?
-                    OR LOWER(COALESCE(p.nama, '')) LIKE ?
-                    OR LOWER(COALESCE(a.jenis_pelayanan, '')) LIKE ?
-                )
-            """
-            like_keyword = f"%{keyword}%"
-            params.extend([like_keyword, like_keyword, like_keyword])
-
-        if tanggal_awal:
-            query += " AND date(a.created_at) >= date(?) "
-            params.append(tanggal_awal)
-
-        if tanggal_akhir:
-            query += " AND date(a.created_at) <= date(?) "
-            params.append(tanggal_akhir)
-
-        query += " ORDER BY a.created_at DESC "
-
-        rows = conn.execute(query, params).fetchall()
-
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Laporan Pelayanan"
-
-        headers = ["No", "Tanggal", "NIK", "Nama", "No HP", "Umur", "Alamat", "Keperluan", "Petugas"]
-        ws.append(headers)
-
-        for idx, r in enumerate(rows, start=1):
-            row = dict(r)
-            ws.append([
-                idx,
-                format_tanggal_indo(row["tanggal_raw"]),
-                row.get("nik"),
-                row.get("nama"),
-                row.get("nohp"),
-                row.get("umur"),
-                row.get("alamat"),
-                row.get("keperluan"),
-                row.get("petugas_nama"),
-            ])
-
-        output = BytesIO()
-        wb.save(output)
-        output.seek(0)
-
-        return send_file(
-            output,
-            as_attachment=True,
-            download_name="Laporan_Pelayanan.xlsx",
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
     finally:
         conn.close()
         

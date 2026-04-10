@@ -119,7 +119,17 @@ export default function AdjustPrintMarginLaporan({
   }
 
   const exportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(dataLaporan);
+    const excelData = dataLaporan.map((item, index) => ({
+      No: index + 1,
+      Tanggal: item.tanggal_kunjungan || "",
+      NIK: item.nik || "",
+      NoHP: item.nohp || "",
+      Nama: item.nama || "",
+      Keperluan: item.keperluan || "",
+      Petugas: item.petugas_nama || "",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Laporan_Pelayanan');
     XLSX.writeFile(wb, 'Laporan_Pelayanan.xlsx');
