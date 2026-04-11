@@ -33,6 +33,8 @@ const TabelLaporan = ({ data, loading, onDetail, onDelete }) => {
         <Column field="nama" header="Nama" />
         <Column field="umur" header="Umur" />
         <Column field="keperluan" header="Keperluan" />
+        <Column field="alamat" header="Alamat" />
+        <Column field="nohp" header="No HP" />
         <Column field="petugas_nama" header="Ditangani Oleh" />
 
         <Column
