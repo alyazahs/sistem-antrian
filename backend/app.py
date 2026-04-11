@@ -15,6 +15,7 @@ from tts_service import tts_service
 from flask import Flask, jsonify, request, send_file, Response, stream_with_context
 import json
 from queue import Queue
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
@@ -52,6 +53,23 @@ def format_tanggal_indo(dt_str):
         return f"{dt.day:02d} {bulan[dt.month - 1]} {dt.year}"
     except Exception:
         return dt_str
+    
+def hitung_umur(tanggal_lahir):
+    if not tanggal_lahir:
+        return None
+
+    try:
+        tanggal_only = str(tanggal_lahir)[:10]
+        lahir = datetime.strptime(tanggal_only, "%Y-%m-%d")
+
+        today = datetime.today()
+        umur = today.year - lahir.year
+        if (today.month, today.day) < (lahir.month, lahir.day):
+            umur -= 1
+
+        return umur
+    except Exception:
+        return None
 
 def build_display_payload():
     conn = get_db()
@@ -438,11 +456,18 @@ def list_pengunjung():
     conn = get_db()
     try:
         rows = conn.execute("""
-            SELECT id, rfid_uid, nik, nama, nohp, umur, alamat, created_at
+            SELECT id, rfid_uid, nik, nama, nohp, tanggal_lahir, alamat, created_at
             FROM pengunjung
             ORDER BY created_at DESC
         """).fetchall()
-        return jsonify([dict(r) for r in rows])
+
+        data = []
+        for r in rows:
+            item = dict(r)
+            item["umur"] = hitung_umur(item.get("tanggal_lahir"))
+            data.append(item)
+
+        return jsonify(data)
     finally:
         conn.close()
 
@@ -494,12 +519,7 @@ def daftar_pengunjung():
     nama = (data.get("nama") or "").strip()
     nohp = clean_str(data.get("nohp"))
     alamat = clean_str(data.get("alamat"))
-
-    umur = data.get("umur")
-    try:
-        umur = int(umur) if umur not in (None, "", "null") else None
-    except Exception:
-        umur = None
+    tanggal_lahir = clean_str(data.get("tanggal_lahir"))
 
     if not nama:
         return jsonify({"success": False, "message": "Nama wajib diisi"}), 400
@@ -514,9 +534,9 @@ def daftar_pengunjung():
             return jsonify({"success": False, "message": "NIK sudah terdaftar"}), 400
 
         conn.execute("""
-            INSERT INTO pengunjung (rfid_uid, nik, nama, nohp, umur, alamat)
+            INSERT INTO pengunjung (rfid_uid, nik, nama, nohp, tanggal_lahir, alamat)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (rfid_uid, nik, nama, nohp, umur, alamat))
+        """, (rfid_uid, nik, nama, nohp, tanggal_lahir, alamat))
         conn.commit()
 
         row = conn.execute("""
@@ -817,7 +837,6 @@ def antrian_stream():
     def event_stream():
         q = Queue()
         listeners.add(q)
-
         try:
             yield f"data: {json.dumps(build_display_payload())}\n\n"
             while True:
@@ -852,8 +871,8 @@ def list_laporan():
                 p.nik,
                 p.nama,
                 p.nohp,
-                p.umur, 
-                p.alamat,               
+                p.tanggal_lahir,
+                p.alamat,
                 a.jenis_pelayanan AS keperluan,
                 a.handled_by_nama AS petugas_nama
             FROM antrian a
@@ -889,6 +908,7 @@ def list_laporan():
         for r in rows:
             item = dict(r)
             item["tanggal_kunjungan"] = format_tanggal_indo(item["tanggal_raw"])
+            item["umur"] = hitung_umur(item.get("tanggal_lahir"))
             data.append(item)
 
         return jsonify({"success": True, "data": data})
