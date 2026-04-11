@@ -125,18 +125,30 @@ export default function AdjustPrintMarginLaporan({
       No: index + 1,
       Tanggal: item.tanggal_kunjungan || "",
       NIK: item.nik || "",
+      NoHP: item.nohp || "",
       Nama: item.nama || "",
-      Umur: item.umur || "",
+      Umur: item.umur != null ? `${item.umur} th` : "",
       Keperluan: item.keperluan || "",
       Alamat: item.alamat || "",
-      NoHP: item.nohp || "",
       Petugas: item.petugas_nama || "",
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelData);
+
+    const headers = Object.keys(excelData[0] || {});
+    ws["!cols"] = headers.map((header) => {
+      const maxLength = Math.max(
+        header.length,
+        ...excelData.map((row) => String(row[header] ?? "").length)
+      );
+      return { wch: Math.min(Math.max(maxLength + 2, 10), 35) };
+    });
+    
+    ws["!freeze"] = { xSplit: 0, ySplit: 1 };
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Laporan_Pelayanan');
-    XLSX.writeFile(wb, 'Laporan_Pelayanan.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, "Laporan_Pelayanan");
+    XLSX.writeFile(wb, "Laporan_Pelayanan.xlsx");
   };
 
   const handleExportPdf = async () => {
