@@ -4,6 +4,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
+import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 
@@ -20,7 +21,7 @@ export default function FormPengunjungBaru({
     nik: "",
     nama: "",
     nohp: "",
-    umur: null,
+    tanggal_lahir: null,
     alamat: "",
     jenis_pelayanan: null,
   });
@@ -153,18 +154,17 @@ export default function FormPengunjungBaru({
 
           <div>
             <label className="block text-xs font-semibold text-slate-600">
-              Umur
+              Tanggal Lahir
             </label>
-            <InputNumber
-              value={form.umur}
-              onValueChange={(e) =>
-                setForm((p) => ({ ...p, umur: e.value }))
-              }
-              className="mt-2 w-full"
-              inputClassName="w-full"
-              useGrouping={false}
-              placeholder="Masukkan umur"
-            />
+              <Calendar
+                value={form.tanggal_lahir}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, tanggal_lahir: e.value }))
+                }
+                dateFormat="yy-mm-dd"
+                showIcon
+                className="mt-2 w-full"
+              />
           </div>
 
           <div>

@@ -143,10 +143,10 @@ export default function FormPengunjungDitemukan({
 
           <div>
             <label className="block text-xs font-semibold text-slate-600">
-              Umur
+              Tanggal Lahir
             </label>
             <InputNumber
-              value={typeof data?.umur === "number" ? data.umur : null}
+              value={typeof data?.tanggal_lahir === "string" ? data.tanggal_lahir : null}
               readOnly
               disabled
               className="mt-2 w-full"

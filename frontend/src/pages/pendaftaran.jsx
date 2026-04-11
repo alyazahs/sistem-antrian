@@ -167,7 +167,7 @@ export default function Pendaftaran() {
         nik: nik || null,
         nama,
         nohp: (form.nohp || "").trim() || null,
-        umur: form.umur ? Number(form.umur) : null,
+        tanggal_lahir: form.tanggal_lahir || null,
         alamat: (form.alamat || "").trim() || null,
       });
 
@@ -311,7 +311,7 @@ export default function Pendaftaran() {
                   nik: pengunjung?.nik || "",
                   nama: pengunjung?.nama || "",
                   nohp: pengunjung?.nohp || "",
-                  umur: pengunjung?.umur ?? "",
+                  tanggal_lahir: pengunjung?.tanggal_lahir || "",
                   alamat: pengunjung?.alamat || "",
                 }}
               />
