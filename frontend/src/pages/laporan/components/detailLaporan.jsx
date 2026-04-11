@@ -1,5 +1,5 @@
 import { Dialog } from "primereact/dialog";
-import { Button } from "primereact/button";
+
 
 const DetailItem = ({ label, value }) => (
   <div className="mb-3">
@@ -33,6 +33,9 @@ const DetailLaporan = ({ visible, onHide, detail }) => {
             <DetailItem label="Nomor HP" value={detail.nohp} />
           </div>
           <div className="col-12 md:col-6">
+            <DetailItem label="Tanggal Lahir" value={detail.tanggal_lahir} />
+          </div>
+          <div className="col-12 md:col-6">
             <DetailItem label="Umur" value={detail.umur} />
           </div>
           <div className="col-12 md:col-6">
@@ -40,10 +43,6 @@ const DetailLaporan = ({ visible, onHide, detail }) => {
           </div>
           <div className="col-12">
             <DetailItem label="Alamat" value={detail.alamat} />
-          </div>
-
-          <div className="col-12 text-right pt-2">
-            <Button label="Tutup" icon="pi pi-times" onClick={onHide} />
           </div>
         </div>
       ) : null}
