@@ -19,23 +19,43 @@ except Exception:
 
 class RFIDReader:
     def __init__(self):
+        self.buzzer_pin = 17
+
         if IS_PI:
-            self.reader = SimpleMFRC522()   
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(self.buzzer_pin, GPIO.OUT)
+            GPIO.output(self.buzzer_pin, GPIO.LOW)
+
+            self.reader = SimpleMFRC522()
+
             t = threading.Thread(target=self._loop_pi, daemon=True)
             t.start()
         else:
-            # dummy mode (Windows / tanpa hardware)
+            print("RFID / GPIO tidak ditemukan, jalan di mode dummy.")
             t = threading.Thread(target=self._loop_dummy, daemon=True)
             t.start()
+
+    def beep(self, duration=0.1):
+        """Menyalakan buzzer sebentar."""
+        if IS_PI:
+            try:
+                GPIO.output(self.buzzer_pin, GPIO.HIGH)
+                time.sleep(duration)
+                GPIO.output(self.buzzer_pin, GPIO.LOW)
+            except Exception as e:
+                print("Buzzer error:", e)
 
     def _loop_pi(self):
         global _last_uid
         while True:
             try:
-                uid, _ = self.reader.read()  # BLOCKING & STABIL
-                with _lock:
-                    _last_uid = str(uid)
-                time.sleep(1)  # debounce
+                uid, _ = self.reader.read() 
+                if uid:
+                    with _lock:
+                        _last_uid = str(uid)
+
+                    self.beep(0.1)  
+                    time.sleep(1)   
             except Exception as e:
                 print("RFID error:", e)
                 time.sleep(1)
@@ -43,11 +63,10 @@ class RFIDReader:
     def _loop_dummy(self):
         global _last_uid
         while True:
-            # simulasi kartu RFID
             dummy_uid = os.getenv("DUMMY_RFID", "DUMMY-RFID-123456")
             with _lock:
                 _last_uid = dummy_uid
-            time.sleep(5)  # tiap 5 detik muncul "scan"
+            time.sleep(5)
 
     def read_id(self):
         global _last_uid
@@ -58,7 +77,11 @@ class RFIDReader:
 
     def cleanup(self):
         if IS_PI:
-            GPIO.cleanup()
+            try:
+                GPIO.output(self.buzzer_pin, GPIO.LOW)
+                GPIO.cleanup()
+            except Exception as e:
+                print("Cleanup error:", e)
 
 
 rfid_reader = RFIDReader()
