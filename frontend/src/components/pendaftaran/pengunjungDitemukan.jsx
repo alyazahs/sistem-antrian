@@ -69,7 +69,6 @@ export default function FormPengunjungDitemukan({
 
       await loadJenis();
 
-      // pilih otomatis data baru
       setKebutuhan({
         id: newItem.id,
         nama: newItem.nama || nama,
@@ -160,19 +159,21 @@ export default function FormPengunjungDitemukan({
               Jenis Pelayanan
             </label>
 
-            <div className="mt-2 flex gap-2">
-              <Dropdown
-                value={kebutuhan}
-                options={opsiJenis}
-                optionLabel="nama"
-                placeholder={loadingJenis ? "Memuat..." : "Pilih jenis pelayanan"}
-                onChange={(e) => setKebutuhan(e.value)}
-                className="w-full"
-                disabled={loading || loadingJenis}
-                showClear
-                filter
-                filterPlaceholder="Cari jenis..."
-              />
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <div className="min-w-0 flex-1">
+                <Dropdown
+                  value={kebutuhan}
+                  options={opsiJenis}
+                  optionLabel="nama"
+                  placeholder={loadingJenis ? "Memuat..." : "Pilih jenis pelayanan"}
+                  onChange={(e) => setKebutuhan(e.value)}
+                  className="w-full"
+                  disabled={loading || loadingJenis}
+                  showClear
+                  filter
+                  filterPlaceholder="Cari jenis..."
+                />
+              </div>
 
               <Button
                 type="button"
@@ -181,20 +182,21 @@ export default function FormPengunjungDitemukan({
                 tooltip="Tambah jenis pelayanan"
                 onClick={() => setShowDialogJenis(true)}
                 disabled={loading || loadingJenis}
+                className="w-full sm:w-auto sm:flex-shrink-0"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
         <Button
           type="button"
           label="Batal"
           icon="pi pi-times"
           severity="danger"
           outlined
-          className="sm:w-44"
+          className="w-full sm:w-44"
           onClick={onBatal}
           disabled={loading}
         />
@@ -203,7 +205,7 @@ export default function FormPengunjungDitemukan({
           type="button"
           label={loading ? "Process..." : "Daftar"}
           icon={loading ? "pi pi-spin pi-spinner" : "pi pi-check"}
-          className="sm:w-44"
+          className="w-full sm:w-44"
           onClick={submit}
           disabled={loading || !kebutuhan}
         />
