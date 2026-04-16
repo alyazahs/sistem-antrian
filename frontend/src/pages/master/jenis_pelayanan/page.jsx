@@ -150,11 +150,13 @@ export default function JenisPelayananPage() {
       <Toast ref={toastRef} />
       <ConfirmDialog />
 
-      <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <h3 className="text-xl font-semibold">Master Jenis Pelayanan</h3>
+      <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <h3 className="min-w-0 text-xl font-semibold">
+          Master Jenis Pelayanan
+        </h3>
 
-        <div className="flex w-full items-center gap-2 md:w-auto">
-          <span className="p-input-icon-left w-full md:w-[320px]">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:flex-shrink-0">
+          <span className="p-input-icon-left w-full sm:w-[320px]">
             <i className="pi pi-search ml-2" />
             <InputText
               value={keyword}
@@ -172,6 +174,7 @@ export default function JenisPelayananPage() {
               setErrors({});
               setDialogVisible(true);
             }}
+            className="w-full sm:w-auto"
           />
         </div>
       </div>
