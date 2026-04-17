@@ -471,7 +471,7 @@ def list_pengunjung():
     finally:
         conn.close()
 
-# 1) Scan RFID
+# SCAN RFID
 @app.get("/api/scan-rfid")
 def scan_rfid():
     uid = rfid_reader.read_id()
@@ -487,7 +487,7 @@ def scan_rfid():
     finally:
         conn.close()
 
-# 2) Cari pengunjung via NIK
+# CARI NIK
 @app.get("/api/cari-nik")
 def cari_nik():
     nik = (request.args.get("nik") or "").strip()
@@ -503,7 +503,7 @@ def cari_nik():
     finally:
         conn.close()
 
-# 3) Daftar pengunjung baru
+# DAFTAR PENGUNJUNG BARU
 @app.post("/api/daftar-pengunjung")
 def daftar_pengunjung():
     data = request.get_json(silent=True) or {}
@@ -549,7 +549,7 @@ def daftar_pengunjung():
     finally:
         conn.close()
 
-# 4) Ambil antrian
+# AMBIL ANTRIAN
 @app.post("/api/ambil-antrian")
 def ambil_antrian():
     data = request.get_json(silent=True) or {}
@@ -595,7 +595,7 @@ def ambil_antrian():
     finally:
         conn.close()
 
-# 5) API Halaman Antrian
+# HALAMAN ANTRIAN
 @app.get("/api/antrian/summary")
 def antrian_summary():
     conn = get_db()

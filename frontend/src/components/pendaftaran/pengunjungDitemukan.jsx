@@ -87,6 +87,19 @@ export default function FormPengunjungDitemukan({
     }
   };
 
+  const formatTanggalLahir = (value) => {
+  if (!value) return "-";
+
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+
+  return d.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+};
+
   return (
     <div className="mt-5">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.2fr_1fr]">
@@ -144,13 +157,10 @@ export default function FormPengunjungDitemukan({
             <label className="block text-xs font-semibold text-slate-600">
               Tanggal Lahir
             </label>
-            <InputNumber
-              value={typeof data?.tanggal_lahir === "string" ? data.tanggal_lahir : null}
+            <InputText
+              value={formatTanggalLahir(data?.tanggal_lahir)}
               readOnly
-              disabled
               className="mt-2 w-full"
-              inputClassName="w-full"
-              useGrouping={false}
             />
           </div>
 
