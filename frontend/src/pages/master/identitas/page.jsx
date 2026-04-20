@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { InputText } from "primereact/inputtext";
 import TabelIdentitas from "./components/tabelIdentitas";
-
-const API_BASE = import.meta.env.VITE_API_URL;
-const API = `${API_BASE}/api/pengunjung`;
+import { listPengunjung } from "../../../api";
 
 export default function IdentitasPage() {
   const [data, setData] = useState([]);
@@ -19,8 +16,8 @@ export default function IdentitasPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(API);
-      const rows = Array.isArray(res.data) ? res.data : res.data.data || [];
+      const res = await listPengunjung();
+      const rows = Array.isArray(res) ? res : res?.data || [];
       setData(rows);
       setOriginalData(rows);
     } catch (err) {
@@ -33,7 +30,11 @@ export default function IdentitasPage() {
   const handleSearch = (value) => {
     setKeyword(value);
     const q = (value || "").toLowerCase().trim();
-    if (!q) return setData(originalData);
+
+    if (!q) {
+      setData(originalData);
+      return;
+    }
 
     setData(
       originalData.filter((item) => {

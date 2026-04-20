@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useEffect, useRef, useState } from "react";
 import { Dropdown } from "primereact/dropdown";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Calendar } from "primereact/calendar";
-import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
-
-const API_BASE = import.meta.env.VITE_API_URL;
-const API = `${API_BASE}/api/jenis-pelayanan`;
+import { Toast } from "primereact/toast";
+import { showAppToast } from "../../utils/toast";
+import {
+  listJenisPelayanan,
+  createJenisPelayanan,
+} from "../../api";
 
 export default function FormPengunjungBaru({
   loading,
@@ -17,6 +18,8 @@ export default function FormPengunjungBaru({
   onSubmit,
   nikAwal = "",
 }) {
+  const toastRef = useRef(null);
+
   const [form, setForm] = useState({
     nik: "",
     nama: "",
@@ -34,18 +37,19 @@ export default function FormPengunjungBaru({
 
   useEffect(() => {
     if (nikAwal && !form.nik) {
-      setForm((p) => ({ ...p, nik: nikAwal }));
+      setForm((prev) => ({ ...prev, nik: nikAwal }));
     }
-  }, [nikAwal]);
+  }, [nikAwal, form.nik]);
 
   const loadJenis = async () => {
     setLoadingJenis(true);
     try {
-      const res = await axios.get(API);
-      const arr = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      const res = await listJenisPelayanan();
+      const arr = Array.isArray(res) ? res : res?.data || [];
       setOpsiJenis(arr.map((x) => ({ id: x.id, nama: x.nama })));
     } catch (e) {
       console.error("Gagal ambil jenis pelayanan:", e);
+      showAppToast(toastRef, "error", "Gagal memuat jenis pelayanan.");
     } finally {
       setLoadingJenis(false);
     }
@@ -61,9 +65,8 @@ export default function FormPengunjungBaru({
 
     setSavingJenis(true);
     try {
-      const res = await axios.post(API, { nama });
-
-      const newItem = res?.data?.data || res?.data || { id: null, nama };
+      const res = await createJenisPelayanan({ nama });
+      const newItem = res?.data || res || { id: null, nama };
 
       await loadJenis();
 
@@ -77,9 +80,13 @@ export default function FormPengunjungBaru({
 
       setJenisBaru("");
       setShowDialogJenis(false);
+
+      showAppToast(toastRef, "success", "Jenis pelayanan berhasil ditambahkan.");
     } catch (e) {
       console.error("Gagal tambah jenis pelayanan:", e);
-      alert(
+      showAppToast(
+        toastRef,
+        "error",
         e?.response?.data?.message || "Gagal menambahkan jenis pelayanan."
       );
     } finally {
@@ -99,6 +106,8 @@ export default function FormPengunjungBaru({
 
   return (
     <div className="mt-5">
+      <Toast ref={toastRef} />
+
       <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.2fr_1fr]">
         <div className="space-y-4">
           <div>
@@ -107,7 +116,9 @@ export default function FormPengunjungBaru({
             </label>
             <InputText
               value={form.nama}
-              onChange={(e) => setForm((p) => ({ ...p, nama: e.target.value }))}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, nama: e.target.value }))
+              }
               className="mt-2 w-full"
               placeholder="Masukkan nama lengkap"
             />
@@ -119,7 +130,9 @@ export default function FormPengunjungBaru({
             </label>
             <InputText
               value={form.nohp}
-              onChange={(e) => setForm((p) => ({ ...p, nohp: e.target.value }))}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, nohp: e.target.value }))
+              }
               className="mt-2 w-full"
               placeholder="08xxxxxxxxxx (opsional)"
             />
@@ -131,7 +144,9 @@ export default function FormPengunjungBaru({
             </label>
             <InputTextarea
               value={form.alamat}
-              onChange={(e) => setForm((p) => ({ ...p, alamat: e.target.value }))}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, alamat: e.target.value }))
+              }
               rows={7}
               className="mt-2 w-full"
               placeholder="Masukkan alamat lengkap"
@@ -146,7 +161,9 @@ export default function FormPengunjungBaru({
             </label>
             <InputText
               value={form.nik}
-              onChange={(e) => setForm((p) => ({ ...p, nik: e.target.value }))}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, nik: e.target.value }))
+              }
               className="mt-2 w-full"
               placeholder="Masukkan NIK (wajib jika RFID tidak ada)"
             />
@@ -156,15 +173,15 @@ export default function FormPengunjungBaru({
             <label className="block text-xs font-semibold text-slate-600">
               Tanggal Lahir
             </label>
-              <Calendar
-                value={form.tanggal_lahir}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, tanggal_lahir: e.value }))
-                }
-                dateFormat="yy-mm-dd"
-                showIcon
-                className="mt-2 w-full"
-              />
+            <Calendar
+              value={form.tanggal_lahir}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, tanggal_lahir: e.value }))
+              }
+              dateFormat="yy-mm-dd"
+              showIcon
+              className="mt-2 w-full"
+            />
           </div>
 
           <div>
@@ -179,7 +196,7 @@ export default function FormPengunjungBaru({
                 optionLabel="nama"
                 placeholder={loadingJenis ? "Memuat..." : "Pilih jenis pelayanan"}
                 onChange={(e) =>
-                  setForm((p) => ({ ...p, jenis_pelayanan: e.value }))
+                  setForm((prev) => ({ ...prev, jenis_pelayanan: e.value }))
                 }
                 className="w-full"
                 disabled={disabledAll}

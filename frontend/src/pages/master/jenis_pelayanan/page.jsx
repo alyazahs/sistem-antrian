@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import axios from "axios";
 import { Button } from "primereact/button";
-import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { confirmDialog } from "primereact/confirmdialog";
 import { Toast } from "primereact/toast";
 import { InputText } from "primereact/inputtext";
 import TabelJenisPelayanan from "./components/tabelJenisPelayanan";
 import FormDialogJenisPelayanan from "./components/formJenisPelayanan";
-
-const API_BASE = import.meta.env.VITE_API_URL;
-const API = `${API_BASE}/api/jenis-pelayanan`;
+import { showAppToast } from "../../../utils/toast";
+import {
+  listJenisPelayanan,
+  createJenisPelayanan,
+  updateJenisPelayanan,
+  deleteJenisPelayanan,
+} from "../../../api";
 
 export default function JenisPelayananPage() {
   const [data, setData] = useState([]);
@@ -28,18 +31,13 @@ export default function JenisPelayananPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(API);
-      const rows = Array.isArray(res.data) ? res.data : res.data.data || [];
+      const res = await listJenisPelayanan();
+      const rows = Array.isArray(res) ? res : res?.data || [];
       setData(rows);
       setOriginalData(rows);
     } catch (err) {
       console.error(err);
-      toastRef.current?.show({
-        severity: "error",
-        summary: "Gagal",
-        detail: "Gagal ambil data jenis pelayanan",
-        life: 2500,
-      });
+      showAppToast(toastRef, "error", "Gagal memuat data jenis pelayanan.");
     } finally {
       setLoading(false);
     }
@@ -62,7 +60,11 @@ export default function JenisPelayananPage() {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!String(form.nama || "").trim()) newErrors.nama = "Nama wajib diisi";
+
+    if (!String(form.nama || "").trim()) {
+      newErrors.nama = "Nama wajib diisi";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -71,25 +73,14 @@ export default function JenisPelayananPage() {
     if (!validateForm()) return;
 
     const isEdit = !!form.id;
-    const url = isEdit ? `${API}/${form.id}` : API;
 
     try {
       if (isEdit) {
-        await axios.put(url, { nama: form.nama });
-        toastRef.current?.show({
-          severity: "success",
-          summary: "Berhasil",
-          detail: "Data berhasil diperbarui",
-          life: 2000,
-        });
+        await updateJenisPelayanan(form.id, { nama: form.nama });
+        showAppToast(toastRef, "success", "Data berhasil diperbarui.");
       } else {
-        await axios.post(url, { nama: form.nama });
-        toastRef.current?.show({
-          severity: "success",
-          summary: "Berhasil",
-          detail: "Data berhasil ditambahkan",
-          life: 2000,
-        });
+        await createJenisPelayanan({ nama: form.nama });
+        showAppToast(toastRef, "success", "Data berhasil ditambahkan.");
       }
 
       setDialogVisible(false);
@@ -99,12 +90,11 @@ export default function JenisPelayananPage() {
       fetchData();
     } catch (err) {
       console.error(err);
-      toastRef.current?.show({
-        severity: "error",
-        summary: "Gagal",
-        detail: err?.response?.data?.message || "Gagal menyimpan data",
-        life: 2500,
-      });
+      showAppToast(
+        toastRef,
+        "error",
+        err?.response?.data?.message || "Gagal menyimpan data."
+      );
     }
   };
 
@@ -123,23 +113,17 @@ export default function JenisPelayananPage() {
       rejectLabel: "Batal",
       accept: async () => {
         try {
-          await axios.delete(`${API}/${row.id}`);
-          toastRef.current?.show({
-            severity: "success",
-            summary: "Berhasil",
-            detail: "Data berhasil dihapus",
-            life: 2000,
-          });
+          await deleteJenisPelayanan(row.id);
+          showAppToast(toastRef, "success", "Data berhasil dihapus.");
           setKeyword("");
           fetchData();
         } catch (err) {
           console.error(err);
-          toastRef.current?.show({
-            severity: "error",
-            summary: "Gagal",
-            detail: err?.response?.data?.message || "Gagal menghapus data",
-            life: 2500,
-          });
+          showAppToast(
+            toastRef,
+            "error",
+            err?.response?.data?.message || "Gagal menghapus data"
+          );
         }
       },
     });
@@ -148,7 +132,6 @@ export default function JenisPelayananPage() {
   return (
     <div className="card">
       <Toast ref={toastRef} />
-      <ConfirmDialog />
 
       <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <h3 className="min-w-0 text-xl font-semibold">
@@ -179,7 +162,12 @@ export default function JenisPelayananPage() {
         </div>
       </div>
 
-      <TabelJenisPelayanan data={data} loading={loading} onEdit={handleEdit} onDelete={handleDelete} />
+      <TabelJenisPelayanan
+        data={data}
+        loading={loading}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
 
       <FormDialogJenisPelayanan
         visible={dialogVisible}

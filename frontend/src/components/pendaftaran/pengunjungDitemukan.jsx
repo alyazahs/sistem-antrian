@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useEffect, useRef, useState } from "react";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
-import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
-
-const API_BASE = import.meta.env.VITE_API_URL;
-const API_JENIS = `${API_BASE}/api/jenis-pelayanan`;
+import { Toast } from "primereact/toast";
+import { showAppToast } from "../../utils/toast";
+import {
+  listJenisPelayanan,
+  createJenisPelayanan,
+} from "../../api";
 
 export default function FormPengunjungDitemukan({
   loading,
@@ -16,6 +17,8 @@ export default function FormPengunjungDitemukan({
   onSubmit,
   data,
 }) {
+  const toastRef = useRef(null);
+
   const [kebutuhan, setKebutuhan] = useState(null);
   const [opsiJenis, setOpsiJenis] = useState([]);
   const [loadingJenis, setLoadingJenis] = useState(false);
@@ -31,11 +34,12 @@ export default function FormPengunjungDitemukan({
   const loadJenis = async () => {
     setLoadingJenis(true);
     try {
-      const res = await axios.get(API_JENIS);
-      const arr = Array.isArray(res.data) ? res.data : res.data.data || [];
+      const res = await listJenisPelayanan();
+      const arr = Array.isArray(res) ? res : res?.data || [];
       setOpsiJenis(arr.map((x) => ({ id: x.id, nama: x.nama })));
     } catch (e) {
       console.error("Gagal ambil jenis pelayanan:", e);
+      showAppToast(toastRef, "error", "Gagal memuat jenis pelayanan.");
     } finally {
       setLoadingJenis(false);
     }
@@ -58,14 +62,9 @@ export default function FormPengunjungDitemukan({
 
     setSavingJenis(true);
     try {
-      const res = await axios.post(API_JENIS, { nama });
+      const res = await createJenisPelayanan({ nama });
 
-      const newItem =
-        res?.data?.data ||
-        res?.data || {
-          id: null,
-          nama,
-        };
+      const newItem = res?.data || res || { id: null, nama };
 
       await loadJenis();
 
@@ -76,10 +75,13 @@ export default function FormPengunjungDitemukan({
 
       setJenisBaru("");
       setShowDialogJenis(false);
-      alert("Jenis pelayanan berhasil ditambahkan.");
+
+      showAppToast(toastRef, "success", "Jenis pelayanan berhasil ditambahkan.");
     } catch (e) {
       console.error("Gagal tambah jenis pelayanan:", e);
-      alert(
+      showAppToast(
+        toastRef,
+        "error",
         e?.response?.data?.message || "Gagal menambahkan jenis pelayanan."
       );
     } finally {
@@ -88,20 +90,22 @@ export default function FormPengunjungDitemukan({
   };
 
   const formatTanggalLahir = (value) => {
-  if (!value) return "-";
+    if (!value) return "-";
 
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
 
-  return d.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-};
+    return d.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+  };
 
   return (
     <div className="mt-5">
+      <Toast ref={toastRef} />
+
       <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.2fr_1fr]">
         <div className="space-y-4">
           <div>
@@ -119,11 +123,10 @@ export default function FormPengunjungDitemukan({
             <label className="block text-xs font-semibold text-slate-600">
               No. HP
             </label>
-            <InputNumber
+            <InputText
               value={data?.nohp || ""}
               readOnly
               className="mt-2 w-full"
-              useGrouping={false}
             />
           </div>
 
