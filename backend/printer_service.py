@@ -1,129 +1,145 @@
-import platform
 import datetime
+import platform
 import traceback
 
 try:
     import libusb_package
     import os
-    lib = libusb_package.get_library_path()
-    if lib:
-        os.environ['PATH'] += os.pathsep + os.path.dirname(lib)
-        print(f"Added to PATH: {os.path.dirname(lib)}")
-except Exception as e:
-    print(f"Note: Windows USB backend setup skipped: {e}")
-    pass
+    lib_path = libusb_package.get_library_path()
+    if lib_path:
+        os.environ["PATH"] += os.pathsep + os.path.dirname(lib_path)
+except Exception:
+    pass 
 
 try:
-    from escpos.printer import Usb, Dummy, Network
+    from escpos.printer import Usb, Dummy
+    _ESCPOS_OK = True
 except ImportError:
-    print("Warning: python-escpos not installed or import failed. Mocking classes.")
+    print("[PRINTER] python-escpos tidak terinstall. Menggunakan mode dummy.")
+    _ESCPOS_OK = False
+
     class Dummy:
-        def __init__(self): self.output = b""
-        def text(self, t): self.output += t.encode()
-        def set(self, **kwargs): pass
-        def cut(self): self.output += b"\n[CUT]\n"
-        def ln(self, c=1): self.output += b"\n" * c
-        def clear(self): self.output = b""
-        def close(self): pass
+        """Fallback printer yang hanya mencetak ke console."""
+        def __init__(self):
+            self.output = b""
+        def text(self, t):
+            self.output += t.encode(errors="replace")
+        def set(self, **kwargs):
+            pass
+        def cut(self):
+            self.output += b"\n[---- CUT ----]\n"
+        def ln(self, count=1):
+            self.output += b"\n" * count
+        def clear(self):
+            self.output = b""
+        def close(self):
+            pass
+
     Usb = Dummy
-    Network = Dummy
 
 class PrinterService:
+    # Sesuaikan VID/PID dengan printer thermal 
+    USB_VENDOR_ID  = 0x0033
+    USB_PRODUCT_ID = 0x3107
+    PROFILE        = "default"
+
     def __init__(self):
-        self.printer = None
-        self.os_type = platform.system()
-        self.usb_vendor_id = 0x0033  
-        self.usb_product_id = 0x3107
-        self.profile = 'default'
+        self._printer = None
+        self._os = platform.system()
 
-    def connect(self):
-        """Connect to the printer."""
+    def _connect(self) -> None:
+        if not _ESCPOS_OK:
+            self._printer = Dummy()
+            return
+
         try:
-            print(f"Attempting to connect to USB printer (VID: {hex(self.usb_vendor_id)}, PID: {hex(self.usb_product_id)})...")
-            self.printer = Usb(self.usb_vendor_id, self.usb_product_id, in_ep=0x83, out_ep=0x04, profile=self.profile)
+            print(
+                f"[PRINTER] Menghubungkan ke USB "
+                f"(VID={hex(self.USB_VENDOR_ID)}, PID={hex(self.USB_PRODUCT_ID)})..."
+            )
+            self._printer = Usb(
+                self.USB_VENDOR_ID,
+                self.USB_PRODUCT_ID,
+                in_ep=0x83,
+                out_ep=0x04,
+                profile=self.PROFILE,
+            )
             try:
-                self.printer.device.clear_halt(0x04)
-                print("Cleared halt on endpoint 0x04")
-            except Exception as e:
-                 print(f"Warning: Could not clear halt: {e}")
-                 
-            print("USB Printer connected successfully.")
+                self._printer.device.clear_halt(0x04)
+            except Exception:
+                pass 
+            print("[PRINTER] Terhubung.")
         except Exception as e:
-            print(f"Failed to connect to USB printer: {e}")
-            print("Falling back to Dummy Printer (Console Output).")
-            self.printer = Dummy()
+            print(f"[PRINTER] Gagal connect: {e}. Beralih ke mode dummy.")
+            self._printer = Dummy()
 
-    def print_ticket(self, nomor_antrian, nama, jenis_pelayanan, timestamp=None):
-        """Print a queue ticket."""
-        if not self.printer:
-            self.connect()
+    def _get_printer(self):
+        if self._printer is None:
+            self._connect()
+        return self._printer
 
-        if not timestamp:
+    def print_ticket(
+        self,
+        nomor_antrian: int,
+        nama: str,
+        jenis_pelayanan: str,
+        timestamp: datetime.datetime | str | None = None,
+    ) -> None:
+        """Cetak tiket antrian ke printer thermal."""
+        printer = self._get_printer()
+
+        if timestamp is None:
             timestamp = datetime.datetime.now()
-        
-        # Helper to strict types
-        if isinstance(timestamp, str):
+        elif isinstance(timestamp, str):
             try:
                 timestamp = datetime.datetime.fromisoformat(timestamp)
-            except:
+            except ValueError:
                 timestamp = datetime.datetime.now()
 
-        # Format timestamp
-        time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        time_str  = timestamp.strftime("%d-%m-%Y %H:%M")
 
         try:
-            # Check if printer is operational? With dummy it always is.
-            # Reset connection if needed? (Simplification: just try printing)
+            printer.set(align="center", bold=True, double_height=True, double_width=True)
+            printer.text("NOMOR ANTRIAN\n")
+            printer.text("KANTOR KECAMATAN\n")  
+            printer.text("JIWAN\n")
+            printer.ln(1)
 
-            # --- Layout ---
-            # Center alignment
-            self.printer.set(align='center', bold=True, double_height=True, double_width=True)
-            self.printer.text("ANTRIAN\n")
-            self.printer.text("KANTOR KECEMATAN\n")
-            self.printer.text("JIWAN\n")
-            self.printer.ln(1)
-            
-            # Queue Number big
-            self.printer.set(align='center', bold=True, width=3, height=3)
-            self.printer.text(f"{nomor_antrian}\n")
-            self.printer.ln(1)
+            printer.set(align="center", bold=True, width=4, height=4)
+            printer.text(f"{nomor_antrian}\n")
+            printer.ln(1)
 
-            # Details
-            # Use Font B for smaller text
-            self.printer.set(align='left', font='b', bold=False, double_height=False, double_width=False, width=1, height=1)
-            self.printer.text(f"Nama : {nama}\n")
-            self.printer.text(f"Perlu : {jenis_pelayanan}\n")
-            self.printer.text(f"Waktu:\n{time_str}\n")
-            self.printer.ln(1)
+            printer.set(align="left", font="b", bold=False,
+                        double_height=False, double_width=False, width=1, height=1)
+            printer.text(f"Nama    : {nama}\n")
+            printer.text(f"Layanan : {jenis_pelayanan}\n")
+            printer.text(f"Waktu   : {time_str}\n")
+            printer.ln(1)
             
-            # Footer
-            self.printer.set(align='center')
-            self.printer.text("Mohon menunggu untuk\n")
-            self.printer.text("dipanggil\n")
-            self.printer.text("Terima Kasih\n")
-            self.printer.cut()
-            
-            # If Dummy, print to console
-            if isinstance(self.printer, Dummy):
-                print("\n" + "="*32)
-                print(" [VIRTUAL THERMAL PRINTER OUTPUT] ")
-                try:
-                    print(self.printer.output.decode('utf-8', errors='replace'))
-                except:
-                    print(self.printer.output)
-                print("="*32 + "\n")
-                self.printer.clear()
-                
+            printer.set(align="center")
+            printer.text("Mohon menunggu hingga\n")
+            printer.text("nomor Anda dipanggil.\n")
+            printer.text("Terima Kasih\n")
+            printer.cut()
+
+            if isinstance(printer, Dummy):
+                print("\n" + "=" * 36)
+                print("   [VIRTUAL THERMAL PRINTER OUTPUT]   ")
+                print(printer.output.decode("utf-8", errors="replace"))
+                print("=" * 36 + "\n")
+                printer.clear()
+
         except Exception as e:
-            print(f"Error printing ticket: {e}")
+            print(f"[PRINTER] Gagal cetak tiket: {e}")
             traceback.print_exc()
-            self.printer = None
+            self._printer = None
 
-    def close(self):
-        if self.printer and not isinstance(self.printer, Dummy):
+    def close(self) -> None:
+        if self._printer and not isinstance(self._printer, Dummy):
             try:
-                self.printer.close()
-            except:
+                self._printer.close()
+            except Exception:
                 pass
+        self._printer = None
 
 printer_service = PrinterService()
