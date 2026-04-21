@@ -4,25 +4,24 @@ const api = axios.create({
   baseURL: "/api",
 });
 
-// TOKEN HANDLING
-export const getToken = () =>
-  sessionStorage.getItem("token") || localStorage.getItem("token");
+// AUTH STORAGE HELPERS
+const TOKEN_KEY = "token";
+const USER_KEY = "user";
 
-export const setAuth = ({ token, user, remember = true }) => {
-  const store = remember ? localStorage : sessionStorage;
-
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  sessionStorage.removeItem("token");
-  sessionStorage.removeItem("user");
-
-  store.setItem("token", token);
-  store.setItem("user", JSON.stringify(user));
+const clearStorage = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
 };
+
+export const getToken = () =>
+  sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 
 export const getUser = () => {
   const raw =
-    sessionStorage.getItem("user") || localStorage.getItem("user");
+    sessionStorage.getItem(USER_KEY) || localStorage.getItem(USER_KEY);
+
   try {
     return raw ? JSON.parse(raw) : null;
   } catch {
@@ -30,50 +29,68 @@ export const getUser = () => {
   }
 };
 
+export const setAuth = ({ token, user, remember = true }) => {
+  const storage = remember ? localStorage : sessionStorage;
+
+  clearStorage();
+
+  storage.setItem(TOKEN_KEY, token);
+  storage.setItem(USER_KEY, JSON.stringify(user));
+};
+
 export const clearAuth = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  sessionStorage.removeItem("token");
-  sessionStorage.removeItem("user");
+  clearStorage();
 };
 
 // AXIOS INTERCEPTOR
-api.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+api.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
       clearAuth();
-      window.location.href = "/login";
+
+      // Hindari redirect loop kalau memang sedang di halaman login
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     }
-    return Promise.reject(err);
+
+    return Promise.reject(error);
   }
 );
 
 // AUTH
-export const login = async (payload) => {
+export const login = async (payload, remember = true) => {
   const res = await api.post("/auth/login", payload);
 
   if (res.data?.token) {
-    setAuth({ token: res.data.token, user: res.data.user });
+    setAuth({
+      token: res.data.token,
+      user: res.data.user,
+      remember,
+    });
   }
 
   return res.data;
 };
 
-export const getMe = async () =>
-  (await api.get("/auth/me")).data;
+export const getMe = async () => (await api.get("/auth/me")).data;
 
 export const logout = () => {
   clearAuth();
-
   window.location.href = "/login";
 };
 
@@ -91,8 +108,7 @@ export const deleteJenisPelayanan = async (id) =>
   (await api.delete(`/jenis-pelayanan/${id}`)).data;
 
 // USERS (ADMIN)
-export const listUsers = async () =>
-  (await api.get("/users")).data;
+export const listUsers = async () => (await api.get("/users")).data;
 
 export const createUser = async (payload) =>
   (await api.post("/users", payload)).data;
@@ -107,8 +123,10 @@ export const deleteUser = async (id) =>
   (await api.delete(`/users/${id}`)).data;
 
 // PENGUNJUNG
-export const scanRfid = async () =>
-  (await api.get("/scan-rfid")).data;
+export const scanRfid = async () => (await api.get("/scan-rfid")).data;
+
+export const listPengunjung = async () =>
+  (await api.get("/pengunjung")).data;
 
 export const cariNIK = async (nik) =>
   (await api.get("/cari-nik", { params: { nik } })).data;
@@ -124,8 +142,7 @@ export const ambilAntrian = async (payload) =>
 export const antrianSummary = async () =>
   (await api.get("/antrian/summary")).data;
 
-export const antrianNow = async () =>
-  (await api.get("/antrian/now")).data;
+export const antrianNow = async () => (await api.get("/antrian/now")).data;
 
 export const antrianListMenunggu = async () =>
   (await api.get("/antrian/list", { params: { status: "menunggu" } })).data;
@@ -144,31 +161,11 @@ export const panggilUlangAntrian = async (id) =>
   (await api.post(`/antrian/recall/${id}`)).data;
 
 // LAPORAN
-export const listRiwayatPelayanan = async () =>
-  (await api.get("/laporan")).data;
+export const listRiwayatPelayanan = async (params={}) =>
+  (await api.get("/laporan", { params })).data;
 
 export const deleteRiwayatPelayanan = async (id) =>
   (await api.delete(`/laporan/${id}`)).data;
-
-export const exportLaporanExcel = async (params = {}) => {
-  const response = await api.get("/laporan/export-excel", {
-    params,
-    responseType: "blob",
-  });
-
-  const blob = new Blob([response.data], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "Laporan_Pelayanan.xlsx";
-  link.click();
-  window.URL.revokeObjectURL(url);
-
-  return true;
-};
 
 // DASHBOARD
 export const dashboardSummary = async () =>
