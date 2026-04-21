@@ -1,20 +1,65 @@
 import { useEffect, useState } from "react";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 
+function SidebarItem({
+  id,
+  icon,
+  label,
+  active,
+  indent = false,
+  onClick,
+  onNavigate,
+  showCaret = false,
+  masterOpen = false,
+}) {
+  const isActive = id === active;
+  const isMasterTrigger = id === "__master__";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick ? onClick : () => onNavigate(id)}
+      className={[
+        "group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all duration-200",
+        indent ? "pl-11 text-[14px]" : "",
+        isActive
+          ? "bg-gradient-to-r from-[#2BB0A6] to-[#23978F] text-white shadow-lg shadow-[#2BB0A6]/20"
+          : "text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm",
+      ].join(" ")}
+    >
+      <span
+        className={[
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition",
+          isActive
+            ? "bg-white/20 text-white"
+            : "bg-white/70 text-slate-500 group-hover:bg-[#2BB0A6]/10 group-hover:text-[#2BB0A6]",
+        ].join(" ")}
+      >
+        <i className={[icon, "text-sm"].join(" ")} />
+      </span>
+
+      <span className="flex-1 font-semibold">{label}</span>
+
+      {showCaret ? (
+        <i
+          className={[
+            "pi text-xs transition-transform duration-200",
+            masterOpen ? "pi-chevron-up" : "pi-chevron-down",
+            isMasterTrigger && !isActive ? "text-slate-400" : "",
+          ].join(" ")}
+        />
+      ) : null}
+    </button>
+  );
+}
+
 export default function Sidebar({
   active = "pendaftaran",
   onNavigate = () => {},
   onLogout = () => {},
+  user = null,
 }) {
-  const [role, setRole] = useState(null);
-
-  useEffect(() => {
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      setRole(user.role);
-    }
-  }, []);
+  const role = user?.role ?? null;
 
   const activeIsMaster = active.startsWith("master-");
   const [masterOpen, setMasterOpen] = useState(activeIsMaster);
@@ -22,55 +67,6 @@ export default function Sidebar({
   useEffect(() => {
     if (activeIsMaster) setMasterOpen(true);
   }, [activeIsMaster]);
-
-  const Item = ({
-    id,
-    icon,
-    label,
-    indent = false,
-    onClick,
-    showCaret = false,
-  }) => {
-    const isActive = id === active;
-    const isMasterTrigger = id === "__master__";
-
-    return (
-      <button
-        type="button"
-        onClick={onClick ? onClick : () => onNavigate(id)}
-        className={[
-          "group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all duration-200",
-          indent ? "pl-11 text-[14px]" : "",
-          isActive
-            ? "bg-gradient-to-r from-[#2BB0A6] to-[#23978F] text-white shadow-lg shadow-[#2BB0A6]/20"
-            : "text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm",
-        ].join(" ")}
-      >
-        <span
-          className={[
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition",
-            isActive
-              ? "bg-white/20 text-white"
-              : "bg-white/70 text-slate-500 group-hover:bg-[#2BB0A6]/10 group-hover:text-[#2BB0A6]",
-          ].join(" ")}
-        >
-          <i className={[icon, "text-sm"].join(" ")} />
-        </span>
-
-        <span className="flex-1 font-semibold">{label}</span>
-
-        {showCaret ? (
-          <i
-            className={[
-              "pi text-xs transition-transform duration-200",
-              masterOpen ? "pi-chevron-up" : "pi-chevron-down",
-              isMasterTrigger && !isActive ? "text-slate-400" : "",
-            ].join(" ")}
-          />
-        ) : null}
-      </button>
-    );
-  };
 
   const confirmLogout = () => {
     confirmDialog({
@@ -116,14 +112,23 @@ export default function Sidebar({
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-1 pr-2 pb-4">
         <div className="flex flex-col gap-2">
-          <Item id="dashboard" icon="fa-solid fa-chart-pie" label="Dashboard" />
+          <SidebarItem
+            id="dashboard"
+            icon="fa-solid fa-chart-pie"
+            label="Dashboard"
+            active={active}
+            onNavigate={onNavigate}
+          />
 
-          <Item
+          <SidebarItem
             id="__master__"
             icon="fa-solid fa-database"
             label="Master Data"
+            active={active}
             onClick={() => setMasterOpen((v) => !v)}
+            onNavigate={onNavigate}
             showCaret
+            masterOpen={masterOpen}
           />
 
           <div
@@ -133,34 +138,56 @@ export default function Sidebar({
             ].join(" ")}
           >
             <div className="ml-3 mt-1 space-y-2 border-l-2 border-[#2BB0A6]/20 pl-2">
-              <Item
+              <SidebarItem
                 id="master-jenis"
                 icon="fa-solid fa-list"
                 label="Jenis Pelayanan"
+                active={active}
+                onNavigate={onNavigate}
                 indent
               />
-              <Item
+              <SidebarItem
                 id="master-identitas"
                 icon="fa-solid fa-user"
                 label="Identitas"
+                active={active}
+                onNavigate={onNavigate}
                 indent
               />
             </div>
           </div>
 
-          <Item
+          <SidebarItem
             id="pendaftaran"
             icon="fa-solid fa-id-card"
             label="Pendaftaran"
+            active={active}
+            onNavigate={onNavigate}
           />
-          <Item id="antrian" icon="fa-solid fa-users" label="Antrian" />
-          <Item id="laporan" icon="fa-solid fa-file-lines" label="Laporan" />
+
+          <SidebarItem
+            id="antrian"
+            icon="fa-solid fa-users"
+            label="Antrian"
+            active={active}
+            onNavigate={onNavigate}
+          />
+
+          <SidebarItem
+            id="laporan"
+            icon="fa-solid fa-file-lines"
+            label="Laporan"
+            active={active}
+            onNavigate={onNavigate}
+          />
 
           {role === "kasi_pelayanan" && (
-            <Item
+            <SidebarItem
               id="users"
               icon="fa-solid fa-user-gear"
               label="Kelola User"
+              active={active}
+              onNavigate={onNavigate}
             />
           )}
         </div>

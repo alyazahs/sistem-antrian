@@ -1,8 +1,57 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar";
 import Headbar from "./headbar";
-import { getMe, logout as apiLogout } from "../api"; 
+import { getUser, logout as apiLogout } from "../api";
+
+const ROUTES_MAP = {
+  dashboard: {
+    path: "/dashboard",
+    title: "Dashboard",
+    match: (pathname) => pathname.startsWith("/dashboard"),
+  },
+  "master-jenis": {
+    path: "/master/jenis",
+    title: "Master - Jenis Pelayanan",
+    match: (pathname) => pathname.startsWith("/master/jenis"),
+  },
+  "master-identitas": {
+    path: "/master/identitas",
+    title: "Master - Identitas",
+    match: (pathname) => pathname.startsWith("/master/identitas"),
+  },
+  users: {
+    path: "/users",
+    title: "Kelola User",
+    match: (pathname) => pathname.startsWith("/users"),
+  },
+  pendaftaran: {
+    path: "/pendaftaran",
+    title: "Pendaftaran Pengunjung",
+    match: (pathname) => pathname.startsWith("/pendaftaran"),
+  },
+  antrian: {
+    path: "/antrian",
+    title: "Antrian",
+    match: (pathname) => pathname.startsWith("/antrian"),
+  },
+  laporan: {
+    path: "/laporan",
+    title: "Laporan",
+    match: (pathname) => pathname.startsWith("/laporan"),
+  },
+};
+
+const getActiveMenuFromPath = (pathname) => {
+  const found = Object.entries(ROUTES_MAP).find(([, route]) =>
+    route.match(pathname)
+  );
+  return found ? found[0] : "pendaftaran";
+};
+
+const getPathFromId = (id) => {
+  return ROUTES_MAP[id]?.path || "/pendaftaran";
+};
 
 export default function AppLayout({
   titles,
@@ -13,78 +62,25 @@ export default function AppLayout({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [user, setUser] = useState(null);
+  const [user] = useState(() => getUser());
 
-    // active menu item berdasarkan path saat ini 
   const activeFromPath = useMemo(() => {
-    const path = location.pathname;
-
-    if (path.startsWith("/dashboard")) return "dashboard";
-    if (path.startsWith("/master/jenis")) return "master-jenis";
-    if (path.startsWith("/master/identitas")) return "master-identitas";
-    if (path.startsWith("/users")) return "users";
-    if (path.startsWith("/pendaftaran")) return "pendaftaran";
-    if (path.startsWith("/antrian")) return "antrian";
-    if (path.startsWith("/laporan")) return "laporan";
-
-    return "pendaftaran";
+    return getActiveMenuFromPath(location.pathname);
   }, [location.pathname]);
 
-  const titleMap = useMemo(
-    () => ({
-      dashboard: "Dashboard",
-      "master-jenis": "Master - Jenis Pelayanan",
-      "master-identitas": "Master - Identitas",
-      users: "Kelola User",
-      pendaftaran: "Pendaftaran Pengunjung",
-      antrian: "Antrian",
-      laporan: "Laporan",
+  const titleMap = useMemo(() => {
+    const baseTitles = Object.fromEntries(
+      Object.entries(ROUTES_MAP).map(([key, value]) => [key, value.title])
+    );
+
+    return {
+      ...baseTitles,
       ...(titles || {}),
-    }),
-    [titles]
-  );
-
-  useEffect(() => {
-    let mounted = true;
-    getMe()
-      .then((res) => {
-        if (!mounted) return;
-        if (res?.success) setUser(res.user);
-      })
-      .catch(() => {
-        // kalau token invalid, interceptor api.js biasanya udah redirect /login
-        if (mounted) setUser(null);
-      });
-
-    return () => {
-      mounted = false;
     };
-  }, []);
-
-  // navigasi sidebar
-  const idToPath = (id) => {
-    switch (id) {
-      case "dashboard":
-        return "/dashboard";
-      case "master-jenis":
-        return "/master/jenis";
-      case "master-identitas":
-        return "/master/identitas";
-      case "users":
-        return "/users";
-      case "pendaftaran":
-        return "/pendaftaran";
-      case "antrian":
-        return "/antrian";
-      case "laporan":
-        return "/laporan";
-      default:
-        return "/pendaftaran";
-    }
-  };
+  }, [titles]);
 
   const handleNavigate = (id) => {
-    const path = idToPath(id);
+    const path = getPathFromId(id);
     navigate(path);
     onNavigate?.(id);
   };
@@ -94,11 +90,12 @@ export default function AppLayout({
       onLogout();
       return;
     }
+
     apiLogout();
   };
 
   return (
-    <div className="h-screen bg-slate-50 overflow-hidden">
+    <div className="h-screen overflow-hidden bg-slate-50">
       <div className="grid h-screen grid-cols-1 md:grid-cols-[280px_1fr]">
         <Sidebar
           active={activeFromPath}
@@ -107,8 +104,11 @@ export default function AppLayout({
           user={user}
         />
 
-        <main className="min-w-0 h-screen flex flex-col">
-          <Headbar title={titleMap[activeFromPath] || "Pendaftaran Pengunjung"} />
+        <main className="flex h-screen min-w-0 flex-col">
+          <Headbar
+            title={titleMap[activeFromPath] || "Pendaftaran Pengunjung"}
+            user={user}
+          />
 
           <div className="flex-1 overflow-y-auto">
             <div className="w-full p-6 md:p-8">{children}</div>
