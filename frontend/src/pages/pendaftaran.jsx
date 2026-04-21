@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { scanRfid, daftarPengunjung, ambilAntrian, cariNIK } from "../api";
 import { Toast } from "primereact/toast";
 import { Button } from "primereact/button";
@@ -8,27 +8,19 @@ import { Divider } from "primereact/divider";
 import { ProgressSpinner } from "primereact/progressspinner";
 import FormPengunjungBaru from "../components/pendaftaran/pengunjungBaru";
 import FormPengunjungDitemukan from "../components/pendaftaran/pengunjungDitemukan";
+import { showAppToast } from "../utils/toast";
+
+const STATUS_LABELS = {
+  idle: "Menunggu",
+  scanning: "Sedang Memindai",
+  terdaftar: "Pengunjung Ditemukan",
+  belum_terdaftar: "Belum Terdaftar",
+  error: "Terjadi Kesalahan",
+};
 
 export default function Pendaftaran() {
   const toastRef = useRef(null);
 
-  const showToast = (severity, detail) => {
-    toastRef.current?.show({
-      severity, 
-      summary:
-        severity === "success"
-          ? "Berhasil"
-          : severity === "error"
-          ? "Gagal"
-          : severity === "warn"
-          ? "Peringatan"
-          : "Info",
-      detail,
-      life: 2200,
-    });
-  };
-
-  // state utama
   const [statusScan, setStatusScan] = useState("idle"); // idle | scanning | terdaftar | belum_terdaftar | error
   const [pesanScan, setPesanScan] = useState("Menunggu tap e-KTP...");
   const [rfidUid, setRfidUid] = useState("");
@@ -37,14 +29,14 @@ export default function Pendaftaran() {
   const [loadingCari, setLoadingCari] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const mulaiScan = () => {
+  const mulaiScan = useCallback(() => {
     setStatusScan("scanning");
     setPesanScan("Memindai...");
     setRfidUid("");
     setPengunjung(null);
-  };
+  }, []);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setStatusScan("idle");
     setPesanScan("Menunggu tap e-KTP...");
     setRfidUid("");
@@ -52,7 +44,7 @@ export default function Pendaftaran() {
     setNikCari("");
     setLoading(false);
     setLoadingCari(false);
-  };
+  }, []);
 
   // polling scan rfid
   useEffect(() => {
@@ -80,7 +72,7 @@ export default function Pendaftaran() {
           setRfidUid(data?.rfid_uid || "");
           setStatusScan("terdaftar");
           setPesanScan(`Kartu terdeteksi: ${data?.rfid_uid || "-"} (sudah terdaftar)`);
-          showToast("success", "Data pengunjung ditemukan.");
+          showAppToast(toastRef, "success", "Data pengunjung ditemukan.");
           return;
         }
 
@@ -92,7 +84,7 @@ export default function Pendaftaran() {
           setRfidUid(res.rfid_uid || "");
           setStatusScan("belum_terdaftar");
           setPesanScan(`Kartu terdeteksi: ${res.rfid_uid || "-"} (belum terdaftar)`);
-          showToast("warn", "Data pengunjung tidak ditemukan. Silakan isi data baru.");
+          showAppToast(toastRef, "warn", "Kartu terdeteksi tapi belum terdaftar.");
           return;
         }
 
@@ -101,7 +93,7 @@ export default function Pendaftaran() {
         console.error(e);
         setStatusScan("error");
         setPesanScan("Terjadi error saat scan. Coba lagi.");
-        showToast("error", "Gagal memindai RFID (cek backend).");
+        showAppToast(toastRef, "error", "Error saat memindai e-KTP.");
       }
     }, 900);
 
@@ -114,14 +106,14 @@ export default function Pendaftaran() {
   // cari nik manual
   const handleCariNIK = async () => {
     const nik = nikCari.trim();
-    if (!nik) return showToast("warn", "Masukkan NIK dulu.");
+    if (!nik) return showAppToast(toastRef, "warn", "Masukkan NIK untuk mencari.");
 
     setLoadingCari(true);
     try {
       const res = await cariNIK(nik);
 
       if (!res?.success) {
-        showToast("error", res?.message || "Gagal cari NIK");
+        showAppToast(toastRef, "error", res?.message || "Gagal mencari NIK.");
         return;
       }
 
@@ -131,16 +123,16 @@ export default function Pendaftaran() {
         setRfidUid(data?.rfid_uid || "");
         setStatusScan("terdaftar");
         setPesanScan("Data ditemukan melalui pencarian NIK.");
-        showToast("success", "Data pengunjung ditemukan (NIK).");
+        showAppToast(toastRef, "success", "Data pengunjung ditemukan.");
       } else {
         setPengunjung(null);
         setStatusScan("belum_terdaftar");
         setPesanScan("NIK tidak ditemukan. Silakan isi data pengunjung baru.");
-        showToast("warn", "NIK tidak ditemukan. Silakan daftar.");
+        showAppToast(toastRef, "warn", "NIK tidak ditemukan. Silakan daftar.");
       }
     } catch (e) {
       console.error(e);
-      showToast("error", "Error cari NIK (cek endpoint /api/cari-nik).");
+      showAppToast(toastRef, "error", "Error cari NIK (cek endpoint /api/cari-nik).");
     } finally {
       setLoadingCari(false);
     }
@@ -156,9 +148,9 @@ export default function Pendaftaran() {
         ? form.jenis_pelayanan.trim()
         : form.jenis_pelayanan?.nama || "";
 
-    if (!nama) return showToast("warn", "Nama wajib diisi.");
-    if (!jenis) return showToast("warn", "Jenis pelayanan wajib diisi.");
-    if (!rfidUid && !nik) return showToast("warn", "RFID belum ada. Isi NIK untuk daftar manual.");
+    if (!nama) return showAppToast(toastRef, "warn", "Nama wajib diisi.");
+    if (!jenis) return showAppToast(toastRef, "warn", "Jenis pelayanan wajib diisi.");
+    if (!rfidUid && !nik) return showAppToast(toastRef, "warn", "RFID belum ada. Isi NIK untuk daftar manual.");
 
     setLoading(true);
     try {
@@ -180,11 +172,11 @@ export default function Pendaftaran() {
 
       const q = await ambilAntrian(payloadAntrian);
 
-      showToast("success", `Berhasil! Nomor antrian: ${q.nomor_antrian ?? "-"}`);
+      showAppToast(toastRef, "success", `Berhasil! Nomor antrian: ${q.nomor_antrian ?? "-"}`);
       reset();
     } catch (e) {
       console.error(e);
-      showToast("error", e?.response?.data?.message || "Gagal daftar/ambil antrian.");
+      showAppToast(toastRef, "error", e?.response?.data?.message || "Gagal daftar/ambil antrian.");
     } finally {
       setLoading(false);
     }
@@ -197,7 +189,7 @@ export default function Pendaftaran() {
         ? form.jenis_pelayanan.trim()
         : form.jenis_pelayanan?.nama || "";
 
-    if (!jenis) return showToast("warn", "Jenis pelayanan wajib diisi.");
+    if (!jenis) return showAppToast(toastRef, "warn", "Jenis pelayanan wajib diisi.");
 
     setLoading(true);
     try {
@@ -207,11 +199,11 @@ export default function Pendaftaran() {
 
       const q = await ambilAntrian(payload);
 
-      showToast("success", `Berhasil! Nomor antrian: ${q.nomor_antrian ?? "-"}`);
+      showAppToast(toastRef, "success", `Berhasil! Nomor antrian: ${q.nomor_antrian ?? "-"}`);
       reset();
     } catch (e) {
       console.error(e);
-      showToast("error", e?.response?.data?.message || "Gagal ambil nomor antrian.");
+      showAppToast(toastRef, "error", e?.response?.data?.message || "Gagal ambil nomor antrian.");
     } finally {
       setLoading(false);
     }
@@ -236,7 +228,7 @@ export default function Pendaftaran() {
               <div>
                 <div className="text-lg font-bold text-slate-900">Data Pengunjung</div>
                 <div className="text-sm text-slate-500">
-                  Status: <span className="font-semibold">{statusScan}</span>
+                  Status: <span className="font-semibold">{STATUS_LABELS[statusScan]}</span>
                 </div>
               </div>
             </div>
