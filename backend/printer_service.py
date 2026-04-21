@@ -9,7 +9,7 @@ try:
     if lib_path:
         os.environ["PATH"] += os.pathsep + os.path.dirname(lib_path)
 except Exception:
-    pass 
+    pass
 
 try:
     from escpos.printer import Usb, Dummy
@@ -19,7 +19,6 @@ except ImportError:
     _ESCPOS_OK = False
 
     class Dummy:
-        """Fallback printer yang hanya mencetak ke console."""
         def __init__(self):
             self.output = b""
         def text(self, t):
@@ -38,10 +37,9 @@ except ImportError:
     Usb = Dummy
 
 class PrinterService:
-    # Sesuaikan VID/PID dengan printer thermal 
-    USB_VENDOR_ID  = 0x0033
+    USB_VENDOR_ID = 0x0033
     USB_PRODUCT_ID = 0x3107
-    PROFILE        = "default"
+    PROFILE = "default"
 
     def __init__(self):
         self._printer = None
@@ -67,7 +65,7 @@ class PrinterService:
             try:
                 self._printer.device.clear_halt(0x04)
             except Exception:
-                pass 
+                pass
             print("[PRINTER] Terhubung.")
         except Exception as e:
             print(f"[PRINTER] Gagal connect: {e}. Beralih ke mode dummy.")
@@ -78,9 +76,50 @@ class PrinterService:
             self._connect()
         return self._printer
 
+    def _raw_or_text(self, printer, raw_bytes: bytes, fallback_text: str = ""):
+        if isinstance(printer, Dummy):
+            if fallback_text:
+                printer.text(fallback_text)
+            return
+
+        try:
+            printer._raw(raw_bytes)
+        except Exception:
+            if fallback_text:
+                printer.text(fallback_text)
+
+    def _set_align(self, printer, align: str):
+        align_map = {
+            "left": b"\x1B\x61\x00",
+            "center": b"\x1B\x61\x01",
+            "right": b"\x1B\x61\x02",
+        }
+        self._raw_or_text(printer, align_map.get(align, b"\x1B\x61\x00"))
+
+    def _set_mode(self, printer, mode: int):
+        """
+        ESC ! n
+        0x00 = normal
+        0x08 = emphasis/bold-ish mode
+        0x10 = double height
+        0x20 = double width
+        0x30 = double height + double width
+        0x38 = emphasis + double height + double width
+        """
+        self._raw_or_text(printer, b"\x1B\x21" + bytes([mode]))
+
+    def _init_printer(self, printer):
+        self._raw_or_text(printer, b"\x1B\x40")  # initialize
+
+    def _cut(self, printer):
+        if isinstance(printer, Dummy):
+            printer.cut()
+        else:
+            self._raw_or_text(printer, b"\x1D\x56\x01")
+
     def print_ticket(
         self,
-        nomor_antrian: int,
+        nomor_antrian: int | str,
         nama: str,
         jenis_pelayanan: str,
         timestamp: datetime.datetime | str | None = None,
@@ -96,31 +135,41 @@ class PrinterService:
             except ValueError:
                 timestamp = datetime.datetime.now()
 
-        time_str  = timestamp.strftime("%d-%m-%Y %H:%M")
+        time_str = timestamp.strftime("%d-%m-%Y %H:%M")
 
         try:
-            printer.set(align="center", bold=True, double_height=True, double_width=True)
+            self._init_printer(printer)
+
+            # Header tengah
+            self._set_align(printer, "center")
+            self._set_mode(printer, 0x18)  # emphasis + double height
             printer.text("NOMOR ANTRIAN\n")
-            printer.text("KANTOR KECAMATAN\n")  
+            printer.text("KANTOR KECAMATAN\n")
             printer.text("JIWAN\n")
-            printer.ln(1)
+            printer.text("\n")
 
-            printer.set(align="center", bold=True, width=4, height=4)
-            printer.text(f"{nomor_antrian}\n")
-            printer.ln(1)
+            # Nomor antrian besar
+            self._set_mode(printer, 0x30)  # double height + double width
+            printer.text(f"{str(nomor_antrian).upper()}\n")
+            printer.text("\n")
 
-            printer.set(align="left", font="b", bold=False,
-                        double_height=False, double_width=False, width=1, height=1)
+            # Body kecil / normal
+            self._set_mode(printer, 0x00)  # normal
+            self._set_align(printer, "left")
             printer.text(f"Nama    : {nama}\n")
             printer.text(f"Layanan : {jenis_pelayanan}\n")
             printer.text(f"Waktu   : {time_str}\n")
-            printer.ln(1)
-            
-            printer.set(align="center")
+            printer.text("\n")
+
+            # Footer tengah
+            self._set_align(printer, "center")
+            self._set_mode(printer, 0x00)  # normal
             printer.text("Mohon menunggu hingga\n")
             printer.text("nomor Anda dipanggil.\n")
             printer.text("Terima Kasih\n")
-            printer.cut()
+            printer.text("\n")
+
+            self._cut(printer)
 
             if isinstance(printer, Dummy):
                 print("\n" + "=" * 36)
@@ -141,5 +190,6 @@ class PrinterService:
             except Exception:
                 pass
         self._printer = None
+
 
 printer_service = PrinterService()
