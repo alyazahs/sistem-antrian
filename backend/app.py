@@ -1,21 +1,17 @@
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, Response, stream_with_context
 from flask_cors import CORS
 import sqlite3
 import os
-from io import BytesIO
 from datetime import datetime
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import generate_password_hash, check_password_hash
-import openpyxl
 from db_init import init_db, DB_PATH
 from rfid_reader import rfid_reader
 from printer_service import printer_service
 from tts_service import tts_service
-from flask import Flask, jsonify, request, send_file, Response, stream_with_context
 import json
 from queue import Queue
-from datetime import datetime
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
@@ -138,7 +134,7 @@ def broadcast_display_update():
 def make_token(payload: dict) -> str:
     return serializer.dumps(payload)
 
-def verify_token(token: str, max_age_seconds: int = 60 * 60 * 12):
+def verify_token(token: str, max_age_seconds: int = 60 * 60 * 12) -> dict:
     return serializer.loads(token, max_age=max_age_seconds)
 
 def require_auth(fn):
@@ -198,11 +194,6 @@ def seed_defaults():
 
 seed_defaults()
 
-# HEALTH
-@app.get("/")
-def health():
-    return jsonify({"status": "ok", "service": "antrian-kecamatan-api"})
-
 # AUTH ENDPOINTS
 @app.post("/api/auth/login")
 def auth_login():
@@ -246,6 +237,7 @@ def auth_login():
     finally:
         conn.close()
 
+# Endpoint untuk mendapatkan info user yang sedang login
 @app.get("/api/auth/me")
 @require_auth
 def auth_me():
@@ -473,6 +465,7 @@ def list_pengunjung():
 
 # SCAN RFID
 @app.get("/api/scan-rfid")
+@require_auth
 def scan_rfid():
     uid = rfid_reader.read_id()
     if not uid:
@@ -489,6 +482,7 @@ def scan_rfid():
 
 # CARI NIK
 @app.get("/api/cari-nik")
+@require_auth
 def cari_nik():
     nik = (request.args.get("nik") or "").strip()
     if not nik:
@@ -597,6 +591,7 @@ def ambil_antrian():
 
 # HALAMAN ANTRIAN
 @app.get("/api/antrian/summary")
+@require_auth
 def antrian_summary():
     conn = get_db()
     try:
@@ -857,6 +852,7 @@ def antrian_stream():
 
 # LAPORAN
 @app.get("/api/laporan")
+@require_auth
 def list_laporan():
     keyword = (request.args.get("keyword") or "").strip().lower()
     tanggal_awal = (request.args.get("tanggal_awal") or "").strip()
@@ -931,6 +927,7 @@ def delete_laporan(laporan_id):
         
 # DASHBOARD
 @app.get("/api/dashboard")
+@require_auth
 def dashboard_summary():
     conn = get_db()
     try:
