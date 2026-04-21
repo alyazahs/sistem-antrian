@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   antrianSummary,
   antrianNow,
@@ -14,28 +14,15 @@ import { Button } from "primereact/button";
 import AntrianStats from "../components/antrian/antrianStats";
 import AntrianNow from "../components/antrian/antrianNow";
 import AntrianList from "../components/antrian/antrianList";
+import { showAppToast } from "../utils/toast";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Antrian() {
   const toastRef = useRef(null);
   const eventSourceRef = useRef(null);
-
-  const showToast = (severity, detail) => {
-    toastRef.current?.show({
-      severity,
-      summary:
-        severity === "success"
-          ? "Berhasil"
-          : severity === "error"
-          ? "Gagal"
-          : severity === "warn"
-          ? "Peringatan"
-          : "Info",
-      detail,
-      life: 2200,
-    });
-  };
+  const reconnectTimerRef = useRef(null);
+  const isRefreshingRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState(false);
@@ -50,7 +37,10 @@ export default function Antrian() {
   const [now, setNow] = useState(null);
   const [list, setList] = useState([]);
 
-  const refreshAll = async (silent = false) => {
+  const refreshAll = useCallback(async (silent = false) => {
+    if (isRefreshingRef.current) return;
+
+    isRefreshingRef.current = true;
     if (!silent) setLoading(true);
 
     try {
@@ -72,15 +62,18 @@ export default function Antrian() {
     } catch (e) {
       console.error(e);
       if (!silent) {
-        showToast("error", "Gagal memuat data antrian (cek backend).");
+        showAppToast(toastRef, "error", "Gagal memuat data antrian.");
       }
     } finally {
       if (!silent) setLoading(false);
+      isRefreshingRef.current = false;
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    refreshAll(false);
+  const connectSSE = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
 
     const es = new EventSource(`${API_URL}/api/antrian/stream`);
     eventSourceRef.current = es;
@@ -92,6 +85,7 @@ export default function Antrian() {
     es.onmessage = async (event) => {
       try {
         JSON.parse(event.data);
+
         if (document.visibilityState === "visible") {
           await refreshAll(true);
         }
@@ -102,12 +96,28 @@ export default function Antrian() {
 
     es.onerror = () => {
       console.error("SSE antrian disconnected");
+      es.close();
+
+      reconnectTimerRef.current = setTimeout(() => {
+        connectSSE();
+      }, 3000);
     };
+  }, [refreshAll]);
+
+  useEffect(() => {
+    refreshAll(false);
+    connectSSE();
 
     return () => {
-      es.close();
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
+
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
     };
-  }, []);
+  }, [refreshAll, connectSSE]);
 
   const handleCallNext = async () => {
     if (busyAction) return;
@@ -115,14 +125,15 @@ export default function Antrian() {
     setBusyAction(true);
     try {
       const res = await panggilAntrianBerikutnya();
-      showToast("success", `Memanggil antrian: ${res?.nomor_antrian ?? "-"}`);
+      showAppToast(
+        toastRef,
+        "success",
+        res?.message || "Memanggil antrian berikutnya."
+      );
       await refreshAll(true);
     } catch (e) {
       console.error(e);
-      showToast(
-        "error",
-        e?.response?.data?.message || "Gagal memanggil antrian berikutnya."
-      );
+      showAppToast(toastRef, "error", e?.response?.data?.message || "Gagal memanggil antrian berikutnya.");
     } finally {
       setBusyAction(false);
     }
@@ -134,11 +145,11 @@ export default function Antrian() {
     setBusyAction(true);
     try {
       await selesaiAntrian(now.id);
-      showToast("success", "Antrian ditandai selesai.");
+      showAppToast(toastRef, "success", "Antrian selesai.");
       await refreshAll(true);
     } catch (e) {
       console.error(e);
-      showToast("error", "Gagal menyelesaikan antrian.");
+      showAppToast(toastRef, "error", e?.response?.data?.message || "Gagal menyelesaikan antrian.");
     } finally {
       setBusyAction(false);
     }
@@ -150,14 +161,11 @@ export default function Antrian() {
     setBusyAction(true);
     try {
       await lewatiAntrian(now.id);
-      showToast("warn", "Antrian dilewati.");
+      showAppToast(toastRef, "warn", "Antrian dilewati.");
       await refreshAll(true);
     } catch (e) {
       console.error(e);
-      showToast(
-        "error",
-        e?.response?.data?.message || "Gagal melewati antrian."
-      );
+      showAppToast(toastRef, "error", e?.response?.data?.message || "Gagal melewati antrian.");
     } finally {
       setBusyAction(false);
     }
@@ -169,10 +177,10 @@ export default function Antrian() {
     setBusyAction(true);
     try {
       await panggilUlangAntrian(now.id);
-      showToast("info", "Memanggil ulang antrian.");
+      showAppToast(toastRef, "info", "Memanggil ulang antrian.");
     } catch (e) {
       console.error(e);
-      showToast("error", "Gagal panggil ulang.");
+      showAppToast(toastRef, "error", e?.response?.data?.message || "Gagal memanggil ulang antrian.");
     } finally {
       setBusyAction(false);
     }
@@ -210,6 +218,7 @@ export default function Antrian() {
         <AntrianStats summary={summary} />
 
         <Divider />
+
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <AntrianNow
             now={now}
