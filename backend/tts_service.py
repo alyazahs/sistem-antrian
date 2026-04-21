@@ -9,7 +9,6 @@ class TTSService:
     def __init__(self):
         self.queue = queue.Queue()
         self.lang = 'id'
-        # Initialize pygame mixer
         try:
             pygame.mixer.init()
         except Exception as e:
@@ -56,10 +55,8 @@ class TTSService:
         text = f"Atas nama {nama}, nomor antrean {nomor_antrian}. Silakan menuju meja pelayanan."
         self.speak(text)
 
-# Singleton instance
 tts_service = TTSService()
 
 if __name__ == "__main__":
-    # Test
     tts_service.pengumuman("zahra", 5)
-    time.sleep(10)  # Wait for TTS to finish before exiting
+    time.sleep(10)  

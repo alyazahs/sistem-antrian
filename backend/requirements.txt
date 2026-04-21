@@ -1,12 +1,17 @@
+# Web framework
 Flask==3.0.3
 flask-cors
 itsdangerous
 Werkzeug
+gunicorn
+# Excel export
 openpyxl
+# Text-to-Speech
 gTTS
 pygame
-gunicorn
+# Thermal printer ESC/POS (USB)
 python-escpos
-# spidev
-# mfrc522
-# RPi.GPIO
+# Hardware Raspberry Pi
+spidev
+mfrc522
+RPi.GPIO
