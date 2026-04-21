@@ -1,19 +1,37 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { Tag } from "primereact/tag";
 import { ProgressSpinner } from "primereact/progressspinner";
+import { showAppToast } from "../utils/toast";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const STREAM_URL = `${API_URL}/api/antrian/stream`;
+
+const tickerKeyframes = `
+@keyframes displayTickerMove {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+`;
 
 export default function DisplayAntrian() {
+  const toastRef = useRef(null);
+  const eventSourceRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
+  const retryCountRef = useRef(0);
+
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(new Date());
   const [connected, setConnected] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
+  const [videoError, setVideoError] = useState(false);
 
   const [displayData, setDisplayData] = useState({
     current: null,
@@ -27,49 +45,36 @@ export default function DisplayAntrian() {
     },
   });
 
-  const toast = useRef(null);
-  const eventSourceRef = useRef(null);
+  const cleanupSSE = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
 
-  const showToast = (severity, detail) => {
-    toast.current?.show({
-      severity,
-      summary:
-        severity === "success"
-          ? "Berhasil"
-          : severity === "error"
-          ? "Error"
-          : "Info",
-      detail,
-      life: 2200,
-    });
-  };
-
-  const fetchInitial = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`${API_URL}/api/antrian/display`);
-      setDisplayData(res.data);
-    } catch (err) {
-      console.error(err);
-      showToast("error", "Gagal memuat display antrian");
-    } finally {
-      setLoading(false);
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
     }
   };
 
   const connectSSE = () => {
+    cleanupSSE();
+
     try {
-      const es = new EventSource(`${API_URL}/api/antrian/stream`);
+      const es = new EventSource(STREAM_URL);
       eventSourceRef.current = es;
 
       es.onopen = () => {
         setConnected(true);
+        retryCountRef.current = 0;
       };
 
       es.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
           setDisplayData(payload);
+          setLoading(false);
+          setConnected(true);
         } catch (err) {
           console.error("SSE parse error:", err);
         }
@@ -77,21 +82,54 @@ export default function DisplayAntrian() {
 
       es.onerror = () => {
         setConnected(false);
+
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+        }
+
+        const nextRetry = retryCountRef.current + 1;
+        retryCountRef.current = nextRetry;
+
+        const delay = Math.min(1000 * 2 ** (nextRetry - 1), 10000);
+
+        reconnectTimerRef.current = setTimeout(() => {
+          connectSSE();
+        }, delay);
       };
     } catch (err) {
-      console.error("SSE error:", err);
+      console.error("SSE init error:", err);
       setConnected(false);
+
+      const nextRetry = retryCountRef.current + 1;
+      retryCountRef.current = nextRetry;
+
+      const delay = Math.min(1000 * 2 ** (nextRetry - 1), 10000);
+
+      reconnectTimerRef.current = setTimeout(() => {
+        connectSSE();
+      }, delay);
     }
   };
 
   useEffect(() => {
-    fetchInitial();
     connectSSE();
 
+    const fallbackToastTimer = setTimeout(() => {
+      if (loading) {
+        showAppToast(
+          toastRef,
+          "warn",
+          "Koneksi realtime belum tersambung. Sistem sedang mencoba kembali."
+        );
+      }
+    }, 5000);
+
     return () => {
-      eventSourceRef.current?.close();
+      clearTimeout(fallbackToastTimer);
+      cleanupSSE();
     };
-  }, []);
+  }, [loading]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -119,6 +157,7 @@ export default function DisplayAntrian() {
       }
     } catch (err) {
       console.error(err);
+      showAppToast(toastRef, "error", "Gagal mengubah mode fullscreen.");
     }
   };
 
@@ -159,6 +198,8 @@ export default function DisplayAntrian() {
           overflow: "hidden",
         }}
       >
+        <Toast ref={toastRef} position="top-right" />
+        <style>{tickerKeyframes}</style>
         <ProgressSpinner style={{ width: "60px", height: "60px" }} strokeWidth="4" />
         <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>
           Memuat display antrian...
@@ -176,10 +217,11 @@ export default function DisplayAntrian() {
         position: "relative",
         fontFamily: "Arial, sans-serif",
         display: "grid",
-        gridTemplateRows: "15vh 6vh 5vh 39vh 23vh",
+        gridTemplateRows: "15vh 6vh 5vh 43vh 19vh",
       }}
     >
-      <Toast ref={toast} position="top-right" />
+      <Toast ref={toastRef} position="top-right" />
+      <style>{tickerKeyframes}</style>
 
       {!isFullScreen && (
         <div style={{ position: "fixed", right: 18, bottom: 18, zIndex: 50 }}>
@@ -310,13 +352,20 @@ export default function DisplayAntrian() {
           display: "flex",
           alignItems: "center",
           overflow: "hidden",
+          whiteSpace: "nowrap",
         }}
       >
-        <marquee scrollamount="6">
+        <div
+          style={{
+            display: "inline-block",
+            paddingLeft: "100%",
+            animation: "displayTickerMove 22s linear infinite",
+          }}
+        >
           Selamat datang di Kantor Kecamatan Jiwan • Harap menunggu dengan tertib •
           Nomor antrian akan dipanggil sesuai urutan • Mohon siapkan dokumen yang diperlukan •
           Terima kasih atas kesabaran Anda
-        </marquee>
+        </div>
       </div>
 
       <div
@@ -328,8 +377,8 @@ export default function DisplayAntrian() {
         }}
       >
         <Tag
-          value={connected ? "Realtime Aktif" : "Realtime Terputus"}
-          severity={connected ? "success" : "danger"}
+          value={connected ? "Realtime Aktif" : "Mencoba Menyambung..."}
+          severity={connected ? "success" : "warning"}
           rounded
           style={{ fontWeight: 700, fontSize: "0.85rem" }}
         />
@@ -462,19 +511,44 @@ export default function DisplayAntrian() {
               background: "#dfe7ea",
             }}
           >
-            <video
-              src="/videos/profil-kecamatan.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
+            {!videoError ? (
+              <video
+                src="/videos/profil-kecamatan.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                onError={() => setVideoError(true)}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#475569",
+                  background: "linear-gradient(135deg, #e2e8f0, #cbd5e1)",
+                  textAlign: "center",
+                  padding: "1.5rem",
+                }}
+              >
+                <div style={{ fontSize: "1.25rem", fontWeight: 800 }}>
+                  Profil Kecamatan Jiwan
+                </div>
+                <div style={{ marginTop: "0.5rem", fontSize: "0.95rem" }}>
+                  Video belum tersedia.
+                </div>
+              </div>
+            )}
           </div>
         </Card>
       </div>
