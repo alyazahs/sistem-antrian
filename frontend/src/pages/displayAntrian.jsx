@@ -6,8 +6,7 @@ import { Tag } from "primereact/tag";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { showAppToast } from "../utils/toast";
 
-const API_URL = import.meta.env.VITE_API_URL;
-const STREAM_URL = `${API_URL}/api/antrian/stream`;
+const STREAM_URL = "/api/antrian/stream";
 
 const tickerKeyframes = `
 @keyframes displayTickerMove {
