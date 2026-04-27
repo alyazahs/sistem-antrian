@@ -382,7 +382,7 @@ def list_jenis():
         rows = conn.execute("""
             SELECT id, nama, aktif, created_at
             FROM master_jenis_pelayanan
-            ORDER BY nama ASC
+            ORDER BY id ASC
         """).fetchall()
         return jsonify([dict(r) for r in rows])
     finally:
