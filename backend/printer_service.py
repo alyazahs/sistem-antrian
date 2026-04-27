@@ -109,7 +109,7 @@ class PrinterService:
         self._raw_or_text(printer, b"\x1B\x21" + bytes([mode]))
 
     def _init_printer(self, printer):
-        self._raw_or_text(printer, b"\x1B\x40")  # initialize
+        self._raw_or_text(printer, b"\x1B\x40") 
 
     def _cut(self, printer):
         if isinstance(printer, Dummy):
@@ -124,7 +124,6 @@ class PrinterService:
         jenis_pelayanan: str,
         timestamp: datetime.datetime | str | None = None,
     ) -> None:
-        """Cetak tiket antrian ke printer thermal."""
         printer = self._get_printer()
 
         if timestamp is None:
@@ -140,30 +139,26 @@ class PrinterService:
         try:
             self._init_printer(printer)
 
-            # Header tengah
             self._set_align(printer, "center")
-            self._set_mode(printer, 0x18)  # emphasis + double height
+            self._set_mode(printer, 0x30)
             printer.text("NOMOR ANTRIAN\n")
             printer.text("KANTOR KECAMATAN\n")
             printer.text("JIWAN\n")
             printer.text("\n")
 
-            # Nomor antrian besar
-            self._set_mode(printer, 0x30)  # double height + double width
+            self._set_mode(printer, 0x38)  
             printer.text(f"{str(nomor_antrian).upper()}\n")
             printer.text("\n")
 
-            # Body kecil / normal
-            self._set_mode(printer, 0x00)  # normal
+            self._set_mode(printer, 0x10) 
             self._set_align(printer, "left")
             printer.text(f"Nama    : {nama}\n")
             printer.text(f"Layanan : {jenis_pelayanan}\n")
             printer.text(f"Waktu   : {time_str}\n")
             printer.text("\n")
 
-            # Footer tengah
             self._set_align(printer, "center")
-            self._set_mode(printer, 0x00)  # normal
+            self._set_mode(printer, 0x10)  
             printer.text("Mohon menunggu hingga\n")
             printer.text("nomor Anda dipanggil.\n")
             printer.text("Terima Kasih\n")
