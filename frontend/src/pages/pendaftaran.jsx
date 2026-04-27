@@ -21,7 +21,7 @@ const STATUS_LABELS = {
 export default function Pendaftaran() {
   const toastRef = useRef(null);
 
-  const [statusScan, setStatusScan] = useState("idle"); // idle | scanning | terdaftar | belum_terdaftar | error
+  const [statusScan, setStatusScan] = useState("idle"); 
   const [pesanScan, setPesanScan] = useState("Menunggu tap e-KTP...");
   const [rfidUid, setRfidUid] = useState("");
   const [pengunjung, setPengunjung] = useState(null);
