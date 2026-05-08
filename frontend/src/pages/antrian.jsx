@@ -16,7 +16,7 @@ import AntrianNow from "../components/antrian/antrianNow";
 import AntrianList from "../components/antrian/antrianList";
 import { showAppToast } from "../utils/toast";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 export default function Antrian() {
   const toastRef = useRef(null);
