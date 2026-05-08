@@ -8,6 +8,11 @@ const DetailItem = ({ label, value }) => (
   </div>
 );
 
+const formatDate = (dateString) => {
+  const options = { year: "numeric", month: "long", day: "numeric" };
+  return new Date(dateString).toLocaleDateString("id-ID", options);
+};
+
 const DetailLaporan = ({ visible, onHide, detail }) => {
   return (
     <Dialog
@@ -33,7 +38,7 @@ const DetailLaporan = ({ visible, onHide, detail }) => {
             <DetailItem label="Nomor HP" value={detail.nohp} />
           </div>
           <div className="col-12 md:col-6">
-            <DetailItem label="Tanggal Lahir" value={detail.tanggal_lahir} />
+            <DetailItem label="Tanggal Lahir" value={formatDate(detail.tanggal_lahir)} />
           </div>
           <div className="col-12 md:col-6">
             <DetailItem label="Umur" value={detail.umur} />
