@@ -1,8 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar";
 import Headbar from "./headbar";
-import { getUser, logout as apiLogout } from "../api";
+import {
+  getMe,
+  getUser,
+  logout as apiLogout,
+  updateStoredUser,
+} from "../api";
 
 const ROUTES_MAP = {
   dashboard: {
@@ -62,7 +67,38 @@ export default function AppLayout({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [user] = useState(() => getUser());
+  const [user, setUser] = useState(() => getUser());
+
+  useEffect(() => {
+    let active = true;
+
+    getMe()
+      .then((res) => {
+        if (!active || !res?.user) return;
+        updateStoredUser(res.user);
+        setUser(res.user);
+      })
+      .catch(() => {});
+
+    const handleUserUpdated = (event) => {
+      setUser(event.detail || getUser());
+    };
+
+    const handleStorage = (event) => {
+      if (event.key === "user") {
+        setUser(getUser());
+      }
+    };
+
+    window.addEventListener("auth:user-updated", handleUserUpdated);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      active = false;
+      window.removeEventListener("auth:user-updated", handleUserUpdated);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
 
   const activeFromPath = useMemo(() => {
     return getActiveMenuFromPath(location.pathname);

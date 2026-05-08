@@ -15,6 +15,12 @@ const clearStorage = () => {
   sessionStorage.removeItem(USER_KEY);
 };
 
+const getAuthStorage = () => {
+  if (sessionStorage.getItem(TOKEN_KEY)) return sessionStorage;
+  if (localStorage.getItem(TOKEN_KEY)) return localStorage;
+  return null;
+};
+
 export const getToken = () =>
   sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 
@@ -36,6 +42,14 @@ export const setAuth = ({ token, user, remember = true }) => {
 
   storage.setItem(TOKEN_KEY, token);
   storage.setItem(USER_KEY, JSON.stringify(user));
+};
+
+export const updateStoredUser = (user) => {
+  const storage = getAuthStorage();
+  if (!storage || !user) return;
+
+  storage.setItem(USER_KEY, JSON.stringify(user));
+  window.dispatchEvent(new CustomEvent("auth:user-updated", { detail: user }));
 };
 
 export const clearAuth = () => {
