@@ -173,6 +173,8 @@ def require_role(*roles):
 
     return decorator
 
+PETUGAS = ("admin_pelayanan", "kasi_pelayanan")
+
 def seed_defaults():
     conn = get_db()
     try:
@@ -241,7 +243,24 @@ def auth_login():
 @app.get("/api/auth/me")
 @require_auth
 def auth_me():
-    return jsonify({"success": True, "user": request.user})
+    user_id = (request.user or {}).get("id")
+    if not user_id:
+        return jsonify({"success": False, "message": "Invalid token"}), 401
+
+    conn = get_db()
+    try:
+        user = conn.execute("""
+            SELECT id, nama, email, role, status, created_at
+            FROM users
+            WHERE id=?
+        """, (user_id,)).fetchone()
+
+        if not user:
+            return jsonify({"success": False, "message": "User tidak ditemukan"}), 401
+
+        return jsonify({"success": True, "user": dict(user)})
+    finally:
+        conn.close()
 
 # USERS CRUD (ADMIN ONLY)
 @app.get("/api/users")
@@ -389,6 +408,8 @@ def list_jenis():
         conn.close()
 
 @app.post("/api/jenis-pelayanan")
+@require_auth
+@require_role(*PETUGAS)
 def create_jenis():
     data = request.get_json(silent=True) or {}
     nama = (data.get("nama") or "").strip()
@@ -407,6 +428,8 @@ def create_jenis():
         conn.close()
 
 @app.put("/api/jenis-pelayanan/<int:jenis_id>")
+@require_auth
+@require_role(*PETUGAS)
 def update_jenis(jenis_id):
     data = request.get_json(silent=True) or {}
     nama = (data.get("nama") or "").strip()
@@ -432,6 +455,8 @@ def update_jenis(jenis_id):
         conn.close()
 
 @app.delete("/api/jenis-pelayanan/<int:jenis_id>")
+@require_auth
+@require_role(*PETUGAS)
 def delete_jenis(jenis_id):
     conn = get_db()
     try:
@@ -444,6 +469,7 @@ def delete_jenis(jenis_id):
         conn.close()
 
 @app.get("/api/pengunjung")
+@require_auth
 def list_pengunjung():
     conn = get_db()
     try:
@@ -499,6 +525,8 @@ def cari_nik():
 
 # DAFTAR PENGUNJUNG BARU
 @app.post("/api/daftar-pengunjung")
+@require_auth
+@require_role(*PETUGAS)
 def daftar_pengunjung():
     data = request.get_json(silent=True) or {}
 
@@ -545,6 +573,8 @@ def daftar_pengunjung():
 
 # AMBIL ANTRIAN
 @app.post("/api/ambil-antrian")
+@require_auth
+@require_role(*PETUGAS)
 def ambil_antrian():
     data = request.get_json(silent=True) or {}
 
@@ -679,6 +709,8 @@ def antrian_list():
         conn.close()
 
 @app.post("/api/antrian/call-next")
+@require_auth
+@require_role(*PETUGAS)
 def antrian_call_next():
     conn = get_db()
     try:
@@ -737,6 +769,7 @@ def antrian_call_next():
 
 @app.post("/api/antrian/serve/<int:antrian_id>")
 @require_auth
+@require_role(*PETUGAS)
 def antrian_serve(antrian_id):
     user = getattr(request, "user", {}) or {}
 
@@ -775,6 +808,8 @@ def antrian_serve(antrian_id):
         conn.close()
 
 @app.post("/api/antrian/skip/<int:antrian_id>")
+@require_auth
+@require_role(*PETUGAS)
 def antrian_skip(antrian_id):
     conn = get_db()
     try:
@@ -799,6 +834,8 @@ def antrian_skip(antrian_id):
         conn.close()
         
 @app.post("/api/antrian/recall/<int:antrian_id>")
+@require_auth
+@require_role(*PETUGAS)
 def antrian_recall(antrian_id):
     conn = get_db()
     try:
@@ -912,6 +949,8 @@ def list_laporan():
         conn.close()
 
 @app.delete("/api/laporan/<int:laporan_id>")
+@require_auth
+@require_role(*PETUGAS)
 def delete_laporan(laporan_id):
     conn = get_db()
     try:
@@ -967,6 +1006,7 @@ def dashboard_summary():
         conn.close()
         
 @app.get("/api/dashboard/chart")
+@require_auth
 def dashboard_chart():
     tahun = (request.args.get("tahun") or "").strip()
 
@@ -1003,6 +1043,7 @@ def dashboard_chart():
         conn.close()
         
 @app.get("/api/dashboard/recent")
+@require_auth
 def dashboard_recent():
     limit = request.args.get("limit", 5)
 
