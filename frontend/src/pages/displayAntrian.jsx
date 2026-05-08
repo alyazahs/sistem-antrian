@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
-import { Tag } from "primereact/tag";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { showAppToast } from "../utils/toast";
 
@@ -19,6 +18,15 @@ const tickerKeyframes = `
 }
 `;
 
+const formatQueueNumber = (value) => {
+  if (value === null || value === undefined || value === "-") return "-";
+
+  const numberValue = Number(value);
+  if (Number.isNaN(numberValue)) return String(value);
+
+  return String(numberValue).padStart(2, "0");
+};
+
 export default function DisplayAntrian() {
   const toastRef = useRef(null);
   const eventSourceRef = useRef(null);
@@ -32,7 +40,6 @@ export default function DisplayAntrian() {
   const [connected, setConnected] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
-  const [videoError, setVideoError] = useState(false);
 
   const [displayData, setDisplayData] = useState({
     current: null,
@@ -194,14 +201,49 @@ export default function DisplayAntrian() {
   const currentJenis = displayData?.current?.jenis_pelayanan ?? "-";
   const nextNumber = displayData?.next?.nomor_antrian ?? "-";
   const remaining = displayData?.summary?.menunggu ?? 0;
-  const totalToday = displayData?.summary?.total_hari_ini ?? 0;
+  const servedToday = displayData?.summary?.dilayani ?? 0;
+  const skippedToday = displayData?.summary?.dilewati ?? 0;
+
+  const currentNumberText = formatQueueNumber(currentNumber);
+  const nextNumberText = formatQueueNumber(nextNumber);
+
+  const stats = [
+    {
+      label: "Selanjutnya",
+      value: nextNumberText,
+      helper: "Nomor berikutnya",
+      color: "#0f766e",
+      background: "#dff5f1",
+    },
+    {
+      label: "Menunggu",
+      value: remaining,
+      helper: "Belum dipanggil",
+      color: "#b45309",
+      background: "#fff1d8",
+    },
+    {
+      label: "Dilayani",
+      value: servedToday,
+      helper: "Selesai hari ini",
+      color: "#2563eb",
+      background: "#e5efff",
+    },
+    {
+      label: "Dilewati",
+      value: skippedToday,
+      helper: "Tidak hadir",
+      color: "#be123c",
+      background: "#ffe4ea",
+    },
+  ];
 
   if (loading) {
     return (
       <div
         style={{
           height: "100vh",
-          background: "#eef1f4",
+          background: "#eef5f2",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -212,8 +254,16 @@ export default function DisplayAntrian() {
       >
         <Toast ref={toastRef} position="top-right" />
         <style>{tickerKeyframes}</style>
+
+        <img
+          src="/logo-kab.png"
+          alt="Logo Kabupaten"
+          style={{ width: 84, height: 84, objectFit: "contain" }}
+        />
+
         <ProgressSpinner style={{ width: "60px", height: "60px" }} strokeWidth="4" />
-        <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>
+
+        <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#12332f" }}>
           Memuat display antrian...
         </div>
       </div>
@@ -224,12 +274,14 @@ export default function DisplayAntrian() {
     <div
       style={{
         height: "100vh",
-        background: "#eceef1",
+        background: "#edf4f2",
         overflow: "hidden",
         position: "relative",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: "Inter, Arial, sans-serif",
         display: "grid",
-        gridTemplateRows: "15vh 6vh 5vh 43vh 19vh",
+        gridTemplateRows: isFullScreen
+          ? "118px 44px auto 150px"
+          : "104px 40px auto 132px",
       }}
     >
       <Toast ref={toastRef} position="top-right" />
@@ -255,112 +307,138 @@ export default function DisplayAntrian() {
             position: "absolute",
             inset: 0,
             zIndex: 60,
-            background: "rgba(0,0,0,0.45)",
+            background: "rgba(11, 35, 32, 0.66)",
+            backdropFilter: "blur(3px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Button
-            label="Mulai Tampilkan Display"
-            icon="pi pi-play"
-            className="p-button-warning"
-            onClick={() => setUserHasInteracted(true)}
-          />
+          <div
+            style={{
+              width: "520px",
+              maxWidth: "92vw",
+              borderRadius: 28,
+              background: "#ffffff",
+              padding: "2rem",
+              textAlign: "center",
+              boxShadow: "0 28px 80px rgba(8, 47, 43, 0.32)",
+            }}
+          >
+            <img
+              src="/logo-kab.png"
+              alt="Logo Kabupaten"
+              style={{ width: 76, height: 76, objectFit: "contain", marginBottom: 16 }}
+            />
+
+            <div style={{ color: "#12332f", fontSize: "1.45rem", fontWeight: 900 }}>
+              Display Antrian Kecamatan Jiwan
+            </div>
+
+            <div style={{ color: "#64736f", fontSize: "0.95rem", marginTop: 8 }}>
+              Layar layanan siap ditampilkan.
+            </div>
+
+            <Button
+              label="Mulai Display"
+              icon="pi pi-play"
+              onClick={() => setUserHasInteracted(true)}
+              style={{
+                marginTop: 24,
+                background: "#0f766e",
+                borderColor: "#0f766e",
+                fontWeight: 800,
+                padding: "0.9rem 1.4rem",
+              }}
+            />
+          </div>
         </div>
       )}
 
-      <div
+      <header
         style={{
-          background: "linear-gradient(135deg, #69b7ad 0%, #66a99f 100%)",
-          padding: "0 24px",
+          background: "#ffffff",
+          borderBottom: "1px solid rgba(15, 118, 110, 0.16)",
+          padding: isFullScreen ? "0 42px" : "0 42px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          position: "relative",
-          overflow: "hidden",
+          boxShadow: "0 10px 28px rgba(15, 118, 110, 0.08)",
+          minWidth: 0,
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            width: 280,
-            height: 280,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.15)",
-            right: -60,
-            top: -140,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            width: 220,
-            height: 220,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.10)",
-            right: 170,
-            top: -110,
-          }}
-        />
-
-        <div style={{ display: "flex", alignItems: "center", gap: 16, zIndex: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 18, minWidth: 0 }}>
           <img
             src="/logo-kab.png"
             alt="Logo Kecamatan"
-            style={{ width: 64, height: 76, objectFit: "contain" }}
+            style={{
+              width: isFullScreen ? 70 : 62,
+              height: isFullScreen ? 78 : 70,
+              objectFit: "contain",
+            }}
           />
 
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div
               style={{
-                color: "#f2c94c",
-                fontWeight: 800,
-                fontSize: "clamp(1.4rem, 2vw, 2rem)",
+                color: "#0f766e",
+                fontWeight: 900,
+                fontSize: isFullScreen ? "2.25rem" : "2rem",
                 lineHeight: 1.1,
                 textTransform: "uppercase",
+                letterSpacing: 0,
+                whiteSpace: "nowrap",
               }}
             >
               Kantor Kecamatan Jiwan
             </div>
+
             <div
               style={{
-                color: "#0c5f4a",
-                fontWeight: 900,
-                fontSize: "clamp(1.4rem, 2vw, 2rem)",
-                lineHeight: 1.1,
-                textTransform: "uppercase",
+                color: "#7a5a13",
+                fontWeight: 800,
+                fontSize: isFullScreen ? "1.05rem" : "1rem",
+                lineHeight: 1.35,
+                whiteSpace: "nowrap",
               }}
             >
-              Kabupaten Madiun
+              Pelayanan Administrasi Terpadu - Kabupaten Madiun
             </div>
           </div>
         </div>
 
-        <div style={{ textAlign: "right", color: "#fff", zIndex: 2 }}>
-          <div style={{ fontSize: "clamp(0.9rem, 1vw, 1.1rem)", fontWeight: 600 }}>
-            {formattedDate}
-          </div>
-          <div
-            style={{
-              fontSize: "clamp(2.2rem, 3.6vw, 3.8rem)",
-              fontWeight: 900,
-              lineHeight: 1,
-            }}
-          >
-            {formattedTime}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 18,
+            color: "#12332f",
+          }}
+        >
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: "1rem", fontWeight: 700 }}>{formattedDate}</div>
+
+            <div
+              style={{
+                fontSize: isFullScreen ? "3.25rem" : "2.9rem",
+                fontWeight: 900,
+                lineHeight: 1,
+                color: "#0f766e",
+              }}
+            >
+              {formattedTime}
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
       <div
         style={{
-          background: "#fff",
-          borderTop: "1px solid rgba(0,0,0,0.05)",
-          borderBottom: "1px solid rgba(0,0,0,0.06)",
-          fontSize: "clamp(1rem, 1.3vw, 1.35rem)",
+          background: "#0f766e",
+          borderBottom: "1px solid rgba(0,0,0,0.08)",
+          fontSize: isFullScreen ? "1.12rem" : "1rem",
           fontWeight: 800,
-          color: "#111827",
+          color: "#ffffff",
           display: "flex",
           alignItems: "center",
           overflow: "hidden",
@@ -371,65 +449,48 @@ export default function DisplayAntrian() {
           style={{
             display: "inline-block",
             paddingLeft: "100%",
-            animation: "displayTickerMove 22s linear infinite",
+            animation: "displayTickerMove 40s linear infinite",
           }}
         >
-          Selamat datang di Kantor Kecamatan Jiwan • Harap menunggu dengan tertib •
-          Nomor antrian akan dipanggil sesuai urutan • Mohon siapkan dokumen yang diperlukan •
+          Selamat datang di Kantor Kecamatan Jiwan &bull; Harap menunggu dengan tertib &bull;
+          Nomor antrian akan dipanggil sesuai urutan &bull; Mohon siapkan dokumen yang diperlukan &bull;
           Terima kasih atas kesabaran Anda
         </div>
       </div>
 
-      <div
-        style={{
-          padding: "0 24px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Tag
-          value={connected ? "Realtime Aktif" : "Mencoba Menyambung..."}
-          severity={connected ? "success" : "warning"}
-          rounded
-          style={{ fontWeight: 700, fontSize: "0.85rem" }}
-        />
-
-        <div style={{ fontWeight: 700, color: "#0b766e", fontSize: "0.95rem" }}>
-          Pelayanan Administrasi
-        </div>
-      </div>
-
-      <div
+      <main
         style={{
           display: "grid",
-          gridTemplateColumns: "1.05fr 1.2fr",
-          gap: 20,
-          padding: "0 24px 12px",
+          gridTemplateColumns: "minmax(360px, 0.96fr) minmax(420px, 1.04fr)",
+          gap: isFullScreen ? 28 : 24,
+          padding: isFullScreen ? "24px 42px 20px" : "18px 42px 16px",
           minHeight: 0,
+          alignItems: "start",
         }}
       >
         <Card
           style={{
-            height: "100%",
-            borderRadius: 24,
+            height: isFullScreen ? 530 : 440,
+            borderRadius: 22,
             overflow: "hidden",
-            border: "1px solid rgba(0,0,0,0.08)",
-            boxShadow: "0 10px 24px rgba(0,0,0,0.08)",
-            background: "#f7f7f8",
+            border: "1px solid rgba(15, 118, 110, 0.14)",
+            boxShadow: "0 24px 50px rgba(15, 54, 49, 0.12)",
+            background: "#ffffff",
           }}
+          pt={{ body: { style: { height: "100%", padding: 0 } } }}
         >
           <div
             style={{
-              background: "#0b8775",
+              background: "#0f766e",
               color: "#fff",
               textAlign: "center",
               fontWeight: 900,
               fontSize: "clamp(1.2rem, 1.8vw, 2rem)",
-              borderRadius: 18,
-              padding: "0.9rem 0.8rem",
+              borderRadius: 16,
+              padding: "2rem 1rem",
               letterSpacing: 1,
               textTransform: "uppercase",
+              transform: "translateY(-22px)",
             }}
           >
             Memanggil Antrian
@@ -438,20 +499,22 @@ export default function DisplayAntrian() {
           <div
             style={{
               textAlign: "center",
-              height: "calc(100% - 68px)",
+              height: isFullScreen ? "calc(100% - 70px)" : "calc(100% - 62px)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
-              padding: "0.75rem 1rem 1rem",
+              justifyContent: isFullScreen ? "flex-start" : "center",
+
+              padding: isFullScreen ? "1.6rem 2rem 1rem" : "0.8rem 2rem",
             }}
           >
             <div
               style={{
-                fontSize: "clamp(1.2rem, 1.8vw, 2rem)",
+                fontSize: isFullScreen ? "1.8rem" : "1.4rem",
                 fontWeight: 800,
-                color: "#111827",
-                marginBottom: "0.5rem",
+                color: "#66716f",
+                marginBottom: isFullScreen ? "0.35rem" : "0.25rem",
+                textTransform: "uppercase",
               }}
             >
               No Antrian
@@ -459,21 +522,22 @@ export default function DisplayAntrian() {
 
             <div
               style={{
-                fontSize: "clamp(4.5rem, 8vw, 7rem)",
+                fontSize: isFullScreen ? "8rem" : "7rem",
                 fontWeight: 900,
-                lineHeight: 1,
-                color: "#111111",
+                lineHeight: 0.9,
+                color: "#10201e",
+                letterSpacing: 0,
               }}
             >
-              {currentNumber}
+              {currentNumberText}
             </div>
 
             <div
               style={{
-                marginTop: "0.8rem",
-                fontSize: "clamp(0.95rem, 1.2vw, 1.2rem)",
-                fontWeight: 700,
-                color: "#334155",
+                marginTop: isFullScreen ? "1.1rem" : "0.8rem",
+                fontSize: isFullScreen ? "2.5rem" : "2.3rem",
+                fontWeight: 900,
+                color: "#12332f",
                 textAlign: "center",
                 maxWidth: "95%",
                 overflow: "hidden",
@@ -486,14 +550,14 @@ export default function DisplayAntrian() {
 
             <div
               style={{
-                marginTop: "0.65rem",
+                marginTop: isFullScreen ? "0.75rem" : "0.6rem",
                 display: "inline-block",
-                background: "#e6f4f1",
-                color: "#0b766e",
-                padding: "0.5rem 0.9rem",
+                background: "#fff3d6",
+                color: "#805c10",
+                padding: isFullScreen ? "0.62rem 1rem" : "0.5rem 0.9rem",
                 borderRadius: 999,
-                fontWeight: 700,
-                fontSize: "clamp(0.85rem, 1vw, 1rem)",
+                fontWeight: 900,
+                fontSize: isFullScreen ? "1rem" : "0.92rem",
                 maxWidth: "90%",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -507,201 +571,245 @@ export default function DisplayAntrian() {
 
         <Card
           style={{
-            height: "100%",
-            borderRadius: 24,
+            height: isFullScreen ? 530 : 440,
+            borderRadius: 22,
             overflow: "hidden",
-            border: "1px solid rgba(0,0,0,0.08)",
-            boxShadow: "0 10px 24px rgba(0,0,0,0.08)",
+            border: "1px solid rgba(15, 118, 110, 0.14)",
+            boxShadow: "0 24px 50px rgba(15, 54, 49, 0.12)",
             background: "#ffffff",
           }}
+          pt={{ body: { style: { height: "100%", padding: isFullScreen ? 12 : 10 } } }}
         >
           <div
             style={{
               height: "100%",
-              borderRadius: 18,
+              borderRadius: 16,
               overflow: "hidden",
-              background: "#dfe7ea",
+              background: "#e6f2ef",
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              padding: isFullScreen ? "2rem" : "1.55rem 1.5rem",
+              transform: "translateY(-19px)",
             }}
           >
-            {!videoError ? (
-              <video
-                src="/videos/profil-kecamatan.mp4"
-                autoPlay
-                muted
-                loop
-                playsInline
-                onError={() => setVideoError(true)}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                }}
-              />
-            ) : (
+            <div>
               <div
                 style={{
-                  width: "100%",
-                  height: "100%",
                   display: "flex",
-                  flexDirection: "column",
                   alignItems: "center",
-                  justifyContent: "center",
-                  color: "#475569",
-                  background: "linear-gradient(135deg, #e2e8f0, #cbd5e1)",
-                  textAlign: "center",
-                  padding: "1.5rem",
+                  gap: isFullScreen ? 16 : 14,
+                  marginBottom: isFullScreen ? 26 : 16,
                 }}
               >
-                <div style={{ fontSize: "1.25rem", fontWeight: 800 }}>
-                  Profil Kecamatan Jiwan
+                <div
+                  style={{
+                    width: isFullScreen ? 76 : 64,
+                    height: isFullScreen ? 76 : 64,
+                    borderRadius: 20,
+                    background: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 14px 28px rgba(15, 54, 49, 0.10)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <img
+                    src="/logo-kab.png"
+                    alt="Logo Kabupaten"
+                    style={{
+                      width: isFullScreen ? 54 : 46,
+                      height: isFullScreen ? 54 : 46,
+                      objectFit: "contain",
+                    }}
+                  />
                 </div>
-                <div style={{ marginTop: "0.5rem", fontSize: "0.95rem" }}>
-                  Video belum tersedia.
+
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      color: "#12332f",
+                      fontSize: isFullScreen ? "2rem" : "1.65rem",
+                      fontWeight: 900,
+                      lineHeight: 1.15,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    Informasi Pelayanan
+                  </div>
+
+                  <div
+                    style={{
+                      color: "#64736f",
+                      fontSize: isFullScreen ? "1.05rem" : "0.95rem",
+                      fontWeight: 700,
+                      marginTop: 6,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    Harap perhatikan nomor antrian yang sedang dipanggil.
+                  </div>
                 </div>
               </div>
-            )}
+
+              {[
+                "Siapkan dokumen persyaratan sebelum menuju loket.",
+                "Dengarkan panggilan nomor antrian Anda.",
+                "Datang ke petugas saat nomor Anda tampil di layar.",
+              ].map((text, index) => (
+                <div
+                  key={text}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isFullScreen ? "52px 1fr" : "46px 1fr",
+                    alignItems: "center",
+                    gap: isFullScreen ? 14 : 12,
+                    borderRadius: 18,
+                    background: "#ffffff",
+                    padding: isFullScreen ? "0.95rem 1rem" : "0.72rem 0.9rem",
+                    marginBottom: isFullScreen ? 12 : 10,
+                    boxShadow: "0 10px 22px rgba(15, 54, 49, 0.08)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: isFullScreen ? 52 : 46,
+                      height: isFullScreen ? 52 : 46,
+                      borderRadius: 16,
+                      background: "#dff5f1",
+                      color: "#0f766e",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 900,
+                      fontSize: isFullScreen ? "1.35rem" : "1.15rem",
+                    }}
+                  >
+                    {index + 1}
+                  </div>
+
+                  <div
+                    style={{
+                      color: "#12332f",
+                      fontSize: isFullScreen ? "1.12rem" : "1rem",
+                      fontWeight: 800,
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {text}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                borderRadius: 18,
+                background: "#0f766e",
+                color: "#ffffff",
+                padding: isFullScreen ? "1rem 1.2rem" : "0.82rem 1rem",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 14,
+                fontWeight: 900,
+                fontSize: isFullScreen ? "1rem" : "0.92rem",
+                boxShadow: "0 16px 30px rgba(15, 118, 110, 0.20)",
+              }}
+            >
+              <span>Pelayanan Administrasi Terpadu</span>
+            </div>
           </div>
         </Card>
-      </div>
+      </main>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 20,
-          padding: "0 24px 16px",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: isFullScreen ? 18 : 16,
+          padding: isFullScreen ? "0 42px 24px" : "0 42px 16px",
           minHeight: 0,
         }}
       >
-        <Card
-          style={{
-            height: "100%",
-            borderRadius: 20,
-            background: "#a9cbc6",
-            border: "1px solid rgba(0,0,0,0.1)",
-            boxShadow: "0 8px 18px rgba(0,0,0,0.05)",
-          }}
-        >
-          <div
+        {stats.map((item) => (
+          <Card
+            key={item.label}
             style={{
               height: "100%",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0.6rem 0.4rem",
+              borderRadius: 18,
+              background: item.background,
+              transform: "translateY(-28px)",
+              border: "1px solid rgba(15, 54, 49, 0.08)",
+              boxShadow: "0 14px 30px rgba(15, 54, 49, 0.08)",
             }}
+            pt={{ body: { style: { height: "100%", padding: 0 } } }}
           >
             <div
               style={{
-                fontSize: "clamp(2.8rem, 5vw, 5rem)",
-                fontWeight: 900,
-                lineHeight: 1,
-                color: "#111",
+                height: "100%",
+                display: "grid",
+                gridTemplateColumns: isFullScreen ? "82px 1fr" : "70px 1fr",
+                alignItems: "center",
+                gap: isFullScreen ? 14 : 12,
+                padding: isFullScreen ? "0.9rem 1.1rem" : "0.75rem 1rem",
               }}
             >
-              {nextNumber}
-            </div>
-            <div
-              style={{
-                marginTop: "0.6rem",
-                fontSize: "clamp(0.95rem, 1.2vw, 1.2rem)",
-                fontWeight: 700,
-                color: "#111827",
-              }}
-            >
-              Antrian Selanjutnya
-            </div>
-          </div>
-        </Card>
+              <div
+                style={{
+                  width: isFullScreen ? 82 : 70,
+                  height: isFullScreen ? 82 : 70,
+                  borderRadius: 18,
+                  background: "#ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: item.color,
+                  fontSize: isFullScreen ? "2.4rem" : "2rem",
+                  fontWeight: 900,
+                  boxShadow: "0 10px 22px rgba(15, 54, 49, 0.09)",
+                }}
+              >
+                {item.value}
+              </div>
 
-        <Card
-          style={{
-            height: "100%",
-            borderRadius: 20,
-            background: "#a9cbc6",
-            border: "1px solid rgba(0,0,0,0.1)",
-            boxShadow: "0 8px 18px rgba(0,0,0,0.05)",
-          }}
-        >
-          <div
-            style={{
-              height: "100%",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0.6rem 0.4rem",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "clamp(2.8rem, 5vw, 5rem)",
-                fontWeight: 900,
-                lineHeight: 1,
-                color: "#111",
-              }}
-            >
-              {remaining}
-            </div>
-            <div
-              style={{
-                marginTop: "0.6rem",
-                fontSize: "clamp(0.95rem, 1.2vw, 1.2rem)",
-                fontWeight: 700,
-                color: "#111827",
-              }}
-            >
-              Antrian yang Belum Dipanggil
-            </div>
-          </div>
-        </Card>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    color: "#10201e",
+                    fontWeight: 900,
+                    fontSize: isFullScreen ? "1.18rem" : "1.05rem",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {item.label}
+                </div>
 
-        <Card
-          style={{
-            height: "100%",
-            borderRadius: 20,
-            background: "#a9cbc6",
-            border: "1px solid rgba(0,0,0,0.1)",
-            boxShadow: "0 8px 18px rgba(0,0,0,0.05)",
-          }}
-        >
-          <div
-            style={{
-              height: "100%",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0.6rem 0.4rem",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "clamp(2.8rem, 5vw, 5rem)",
-                fontWeight: 900,
-                lineHeight: 1,
-                color: "#111",
-              }}
-            >
-              {totalToday}
+                <div
+                  style={{
+                    color: "#66716f",
+                    fontWeight: 700,
+                    fontSize: isFullScreen ? "0.88rem" : "0.82rem",
+                    marginTop: 4,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {item.helper}
+                </div>
+              </div>
             </div>
-            <div
-              style={{
-                marginTop: "0.6rem",
-                fontSize: "clamp(0.95rem, 1.2vw, 1.2rem)",
-                fontWeight: 700,
-                color: "#111827",
-              }}
-            >
-              Total Antrian Hari Ini
-            </div>
-          </div>
-        </Card>
+          </Card>
+        ))}
       </div>
     </div>
   );
