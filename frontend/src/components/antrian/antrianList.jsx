@@ -2,7 +2,7 @@ import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import QueueRow from "./queueRow";
 
-export default function AntrianList({ list, loading, busyAction, onCallNext }) {
+export default function AntrianList({ list, busyAction, onCallNext }) {
   return (
     <Card className="rounded-2xl shadow-sm">
       <div className="mb-2 flex items-center justify-between">

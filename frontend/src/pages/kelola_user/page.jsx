@@ -3,7 +3,6 @@ import { Button } from "primereact/button";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Toast } from "primereact/toast";
 import { InputText } from "primereact/inputtext";
-
 import {
   createUser,
   deleteUser,
@@ -12,7 +11,6 @@ import {
   resetPasswordUser,
   updateUser,
 } from "../../api";
-
 import TabelKelolaUser from "./components/tabelKelolaUser";
 import FormDialogKelolaUser from "./components/formKelolaUser";
 
