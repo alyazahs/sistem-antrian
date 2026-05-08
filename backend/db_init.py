@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS antrian (
   nomor_antrian INTEGER NOT NULL,
   jenis_pelayanan TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'menunggu'
-    CHECK(status IN ('menunggu','dipanggil','selesai','batal')),
+    CHECK(status IN ('menunggu','dipanggil','selesai','dilewati','batal')),
   handled_by_user_id INTEGER,
   handled_by_nama TEXT,
   created_at TEXT DEFAULT (datetime('now','localtime')),
