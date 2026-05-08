@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { dashboardSummary, dashboardChart, dashboardRecent } from "../api";
 import { Card } from "primereact/card";
 import { Dropdown } from "primereact/dropdown";
@@ -31,7 +31,7 @@ export default function Dashboard() {
     return { label: y, value: y };
   });
 
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -61,11 +61,11 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tahun]);
 
   useEffect(() => {
     loadDashboard();
-  }, [tahun]);
+  }, [loadDashboard]);
 
   const chartData = useMemo(() => {
     return {

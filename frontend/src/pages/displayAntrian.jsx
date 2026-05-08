@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
@@ -22,8 +22,10 @@ const tickerKeyframes = `
 export default function DisplayAntrian() {
   const toastRef = useRef(null);
   const eventSourceRef = useRef(null);
+  const connectSSERef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const retryCountRef = useRef(0);
+  const loadingRef = useRef(true);
 
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(new Date());
@@ -44,7 +46,7 @@ export default function DisplayAntrian() {
     },
   });
 
-  const cleanupSSE = () => {
+  const cleanupSSE = useCallback(() => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
@@ -54,9 +56,9 @@ export default function DisplayAntrian() {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
     }
-  };
+  }, []);
 
-  const connectSSE = () => {
+  const connectSSE = useCallback(() => {
     cleanupSSE();
 
     try {
@@ -93,7 +95,7 @@ export default function DisplayAntrian() {
         const delay = Math.min(1000 * 2 ** (nextRetry - 1), 10000);
 
         reconnectTimerRef.current = setTimeout(() => {
-          connectSSE();
+          connectSSERef.current?.();
         }, delay);
       };
     } catch (err) {
@@ -106,16 +108,26 @@ export default function DisplayAntrian() {
       const delay = Math.min(1000 * 2 ** (nextRetry - 1), 10000);
 
       reconnectTimerRef.current = setTimeout(() => {
-        connectSSE();
+        connectSSERef.current?.();
       }, delay);
     }
-  };
+  }, [cleanupSSE]);
 
   useEffect(() => {
-    connectSSE();
+    connectSSERef.current = connectSSE;
+  }, [connectSSE]);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  useEffect(() => {
+    const connectTimer = setTimeout(() => {
+      connectSSE();
+    }, 0);
 
     const fallbackToastTimer = setTimeout(() => {
-      if (loading) {
+      if (loadingRef.current) {
         showAppToast(
           toastRef,
           "warn",
@@ -125,10 +137,11 @@ export default function DisplayAntrian() {
     }, 5000);
 
     return () => {
+      clearTimeout(connectTimer);
       clearTimeout(fallbackToastTimer);
       cleanupSSE();
     };
-  }, [loading]);
+  }, [cleanupSSE, connectSSE]);
 
   useEffect(() => {
     const interval = setInterval(() => {

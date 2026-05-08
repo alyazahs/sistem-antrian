@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Toolbar } from "primereact/toolbar";
 import { Avatar } from "primereact/avatar";
 
 export default function Headbar({ title, user = null }) {
-  const [dateStr, setDateStr] = useState("");
-
-  useEffect(() => {
+  const dateStr = useMemo(() => {
     const now = new Date();
     const options = {
       weekday: "long",
@@ -13,7 +11,7 @@ export default function Headbar({ title, user = null }) {
       month: "long",
       year: "numeric",
     };
-    setDateStr(now.toLocaleDateString("id-ID", options));
+    return now.toLocaleDateString("id-ID", options);
   }, []);
 
   const initials = useMemo(() => {

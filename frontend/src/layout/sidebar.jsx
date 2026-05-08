@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 
 function SidebarItem({
@@ -62,11 +62,8 @@ export default function Sidebar({
   const role = user?.role ?? null;
 
   const activeIsMaster = active.startsWith("master-");
-  const [masterOpen, setMasterOpen] = useState(activeIsMaster);
-
-  useEffect(() => {
-    if (activeIsMaster) setMasterOpen(true);
-  }, [activeIsMaster]);
+  const [masterManuallyOpen, setMasterManuallyOpen] = useState(false);
+  const masterOpen = activeIsMaster || masterManuallyOpen;
 
   const confirmLogout = () => {
     confirmDialog({
@@ -125,7 +122,7 @@ export default function Sidebar({
             icon="fa-solid fa-database"
             label="Master Data"
             active={active}
-            onClick={() => setMasterOpen((v) => !v)}
+            onClick={() => setMasterManuallyOpen((v) => !v)}
             onNavigate={onNavigate}
             showCaret
             masterOpen={masterOpen}
