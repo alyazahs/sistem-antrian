@@ -4,11 +4,8 @@ import { Button } from "primereact/button";
 import { Tooltip } from "primereact/tooltip";
 
 const TabelLaporan = ({ data, loading, onDetail, onDelete }) => {
-    const formatTanggal = (row) => {
-    if (!row.tanggal_kunjungan) return "-";
-    return new Date(row.tanggal_kunjungan).toLocaleDateString("id-ID");
-  };
-  
+  const formatTanggal = (row) => row.tanggal_kunjungan || "-";
+
   return (
     <>
       <Tooltip target=".lp-btn-detail" content="Detail" />
