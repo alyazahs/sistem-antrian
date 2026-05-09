@@ -4,7 +4,6 @@ import { Toast } from "primereact/toast";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Message } from "primereact/message";
-import { Divider } from "primereact/divider";
 import { ProgressSpinner } from "primereact/progressspinner";
 import FormPengunjungBaru from "../components/pendaftaran/pengunjungBaru";
 import FormPengunjungDitemukan from "../components/pendaftaran/pengunjungDitemukan";
@@ -17,6 +16,15 @@ const STATUS_LABELS = {
   belum_terdaftar: "Belum Terdaftar",
   tanpa_ktp: "Antrian Tanpa KTP",
   error: "Terjadi Kesalahan",
+};
+
+const STATUS_BADGES = {
+  idle: "bg-slate-100 text-slate-700 ring-slate-200",
+  scanning: "bg-cyan-50 text-cyan-700 ring-cyan-200",
+  terdaftar: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  belum_terdaftar: "bg-amber-50 text-amber-700 ring-amber-200",
+  tanpa_ktp: "bg-blue-50 text-blue-700 ring-blue-200",
+  error: "bg-red-50 text-red-700 ring-red-200",
 };
 
 export default function Pendaftaran() {
@@ -236,126 +244,197 @@ export default function Pendaftaran() {
   const tanpaKtp = statusScan === "tanpa_ktp";
   const tampilBaru = statusScan === "belum_terdaftar" || tanpaKtp;
   const tampilDitemukan = statusScan === "terdaftar" && (pengunjung || rfidUid);
+  const statusBadgeClass = STATUS_BADGES[statusScan] || STATUS_BADGES.idle;
+  const canReset = statusScan !== "idle" || Boolean(nikCari || rfidUid || pengunjung);
 
   return (
     <div className="card">
       <Toast ref={toastRef} />
 
-        <div className="mb-5">
-          <h1 className="text-3xl font-bold">Pendaftaran</h1>
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Pendaftaran</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Scan e-KTP atau cari NIK untuk pendaftaran & pengambilan antrian.
+            Identifikasi pengunjung, lengkapi data, lalu ambil nomor antrian.
           </p>
         </div>
 
-          <div className="flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-3 flex-wrap">
-              <div>
-                <div className="text-lg font-bold text-slate-900">Data Pengunjung</div>
-                <div className="text-sm text-slate-500">
-                  Status: <span className="font-semibold">{STATUS_LABELS[statusScan]}</span>
+        <span
+          className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ring-1 ${statusBadgeClass}`}
+        >
+          <span className="h-2 w-2 rounded-full bg-current" />
+          {STATUS_LABELS[statusScan]}
+        </span>
+      </div>
+
+      {/* <div className="-mx-8 border-y border-slate-200 bg-slate-50 px-8 py-5"> */}
+      <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between"></div>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="text-lg font-bold text-slate-900">
+                Identifikasi Pengunjung
+              </div>
+              <div className="mt-1 text-sm text-slate-500">
+                Gunakan scan e-KTP, cari NIK manual, atau mode tanpa KTP.
+              </div>
+            </div>
+
+            {/* <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              {canReset && (
+                <Button
+                  type="button"
+                  label="Reset"
+                  icon="pi pi-refresh"
+                  severity="secondary"
+                  outlined
+                  onClick={reset}
+                  disabled={loading || loadingCari}
+                  className="w-full sm:w-auto"
+                />
+              )}
+
+              <Button
+                type="button"
+                label={statusScan === "scanning" ? "Scanning..." : "Mulai Scan"}
+                icon={statusScan === "scanning" ? "pi pi-spin pi-spinner" : "pi pi-id-card"}
+                onClick={mulaiScan}
+                disabled={statusScan === "scanning" || loading}
+                className="w-full sm:w-auto"
+              />
+            </div> */}
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <span className="p-input-icon-left min-w-0">
+              <i className="pi pi-search ml-2" />
+              <InputText
+                value={nikCari}
+                onChange={(e) => setNikCari(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCariNIK();
+                }}
+                placeholder="Cari nomor NIK jika kartu tidak terbaca"
+                className="w-full pl-8"
+                disabled={loading || statusScan === "scanning"}
+              />
+            </span>
+
+            <Button
+              type="button"
+              onClick={handleCariNIK}
+              disabled={loadingCari || loading || statusScan === "scanning"}
+              icon={loadingCari ? "pi pi-spin pi-spinner" : "pi pi-search"}
+              label={loadingCari ? "Mencari..." : "Cari"}
+              className="w-full lg:w-auto"
+            />
+
+            <Button
+              type="button"
+              onClick={mulaiTanpaKtp}
+              disabled={loading || loadingCari || statusScan === "scanning"}
+              icon="pi pi-user-plus"
+              label="Tanpa KTP"
+              severity="secondary"
+              outlined
+              className="w-full lg:w-auto"
+            />
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200">
+                {statusScan === "scanning" ? (
+                  <ProgressSpinner style={{ width: "22px", height: "22px" }} strokeWidth="6" />
+                ) : (
+                  <i className="pi pi-id-card" />
+                )}
+              </div>
+
+              <div className="min-w-0">
+                <div className="break-words text-sm font-medium text-slate-800">
+                  {pesanScan}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">
+                  RFID: <span className="font-semibold">{rfidUid || "-"}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 md:flex-row md:items-center">
-              <span className="p-input-icon-left w-full md:flex-1">
-                <i className="pi pi-search ml-2" />
-                <InputText
-                  value={nikCari}
-                  onChange={(e) => setNikCari(e.target.value)}
-                  placeholder="Cari Nomor NIK (jika kartu tidak terbaca)"
-                  className="w-full pl-8"
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              {canReset && (
+                <Button
+                  type="button"
+                  label="Reset"
+                  icon="pi pi-refresh"
+                  severity="secondary"
+                  outlined
+                  onClick={reset}
+                  disabled={loading || loadingCari}
+                  className="w-full sm:w-auto"
                 />
-              </span>
-
-              <Button
-                onClick={handleCariNIK}
-                disabled={loadingCari}
-                icon="pi pi-search"
-                label="Cari"
-              />
+              )}
 
               <Button
                 type="button"
-                onClick={mulaiTanpaKtp}
-                disabled={loading || loadingCari}
-                icon="pi pi-user-plus"
-                label="Antrian Tanpa KTP"
-                severity="secondary"
-                outlined
+                label={statusScan === "scanning" ? "Scanning..." : "Mulai Scan"}
+                icon={statusScan === "scanning" ? "pi pi-spin pi-spinner" : "pi pi-id-card"}
+                onClick={mulaiScan}
+                disabled={statusScan === "scanning" || loading}
+                className="w-full sm:w-auto"
               />
             </div>
-
-            <Divider className="my-1" />
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-3">
-                {statusScan === "scanning" ? (
-                  <ProgressSpinner style={{ width: "22px", height: "22px" }} strokeWidth="6" />
-                ) : (
-                  <i className="pi pi-id-card text-slate-500" />
-                )}
-
-                <div className="text-sm text-slate-700">{pesanScan}</div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  label={statusScan === "scanning" ? "Scanning..." : "Mulai Scan"}
-                  icon="pi pi-spinner"
-                  onClick={mulaiScan}
-                  disabled={statusScan === "scanning" || loading}
-                />
-              </div>
-            </div>
-
-            {statusScan === "belum_terdaftar" && (
-              <Message
-                severity="warn"
-                text="Data pengunjung tidak ditemukan. Isi NIK agar data lama bisa terhubung jika kartu pernah didaftarkan manual."
-              />
-            )}
-
-            {tanpaKtp && (
-              <Message
-                severity="info"
-                text="Mode tanpa KTP digunakan untuk warga yang belum punya NIK/KTP. Data dibuat manual dan antrian tetap bisa diambil."
-              />
-            )}
-
-            {tampilDitemukan && (
-              <Message
-                severity="success"
-                text={`Data pengunjung ditemukan. RFID: ${rfidUid || "-"} | NIK: ${pengunjung?.nik || "-"}`}
-              />
-            )}
-
-            {tampilBaru && (
-              <FormPengunjungBaru
-                loading={loading}
-                onBatal={reset}
-                onSubmit={submitPengunjungBaru}
-                nikAwal={nikCari}
-                tanpaKtp={tanpaKtp}
-                wajibNik={!tanpaKtp}
-              />
-            )}
-
-            {tampilDitemukan && (
-              <FormPengunjungDitemukan
-                loading={loading}
-                onBatal={reset}
-                onSubmit={submitPengunjungDitemukan}
-                data={{
-                  nik: pengunjung?.nik || "",
-                  nama: pengunjung?.nama || "",
-                  nohp: pengunjung?.nohp || "",
-                  tanggal_lahir: pengunjung?.tanggal_lahir || "",
-                  alamat: pengunjung?.alamat || "",
-                }}
-              />
-            )}
           </div>
+        </div>
+
+      <div className="mt-5 space-y-4">
+        {statusScan === "belum_terdaftar" && (
+          <Message
+            severity="warn"
+            text="Data pengunjung tidak ditemukan. Isi NIK agar data lama bisa terhubung jika kartu pernah didaftarkan manual."
+          />
+        )}
+
+        {tanpaKtp && (
+          <Message
+            severity="info"
+            text="Mode tanpa KTP digunakan untuk warga yang belum punya NIK/KTP. Data dibuat manual dan antrian tetap bisa diambil."
+          />
+        )}
+
+        {tampilDitemukan && (
+          <Message
+            severity="success"
+            text={`Data pengunjung ditemukan. RFID: ${rfidUid || "-"} | NIK: ${pengunjung?.nik || "-"}`}
+          />
+        )}
+
+        {tampilBaru && (
+          <FormPengunjungBaru
+            loading={loading}
+            onBatal={reset}
+            onSubmit={submitPengunjungBaru}
+            nikAwal={nikCari}
+            tanpaKtp={tanpaKtp}
+            wajibNik={!tanpaKtp}
+          />
+        )}
+
+        {tampilDitemukan && (
+          <FormPengunjungDitemukan
+            loading={loading}
+            onBatal={reset}
+            onSubmit={submitPengunjungDitemukan}
+            data={{
+              nik: pengunjung?.nik || "",
+              nama: pengunjung?.nama || "",
+              nohp: pengunjung?.nohp || "",
+              tanggal_lahir: pengunjung?.tanggal_lahir || "",
+              alamat: pengunjung?.alamat || "",
+            }}
+          />
+        )}
       </div>
+    </div>
   );
 }

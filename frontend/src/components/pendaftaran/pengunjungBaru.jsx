@@ -114,11 +114,20 @@ export default function FormPengunjungBaru({
   const disabledAll = loading || loadingJenis;
 
   return (
-    <div className="mt-5">
+    <div>
       <Toast ref={toastRef} />
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.2fr_1fr]">
         <div className="space-y-4">
+          <div>
+            <div className="text-base font-bold text-slate-900">
+              Identitas Pengunjung
+            </div>
+            <div className="mt-1 text-sm text-slate-500">
+              Lengkapi data dasar warga yang akan mengambil antrian.
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-slate-600">
               Nama
@@ -164,6 +173,15 @@ export default function FormPengunjungBaru({
         </div>
 
         <div className="space-y-4">
+          <div>
+            <div className="text-base font-bold text-slate-900">
+              Kebutuhan Pelayanan
+            </div>
+            <div className="mt-1 text-sm text-slate-500">
+              Pilih jenis layanan sebelum mencetak nomor antrian.
+            </div>
+          </div>
+
           {!tanpaKtp ? (
             <div>
               <label className="block text-xs font-semibold text-slate-600">
@@ -182,7 +200,7 @@ export default function FormPengunjungBaru({
               </div>
             </div>
           ) : (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               Pendaftaran ini tidak memakai NIK atau UID. Gunakan hanya untuk warga yang belum memiliki KTP/NIK.
             </div>
           )}
@@ -236,19 +254,21 @@ export default function FormPengunjungBaru({
         </div>
       </div>
 
-      <div className="mt-6 flex justify-center gap-5">
+      <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-center">
         <Button
           label="Batal"
+          icon="pi pi-times"
           severity="secondary"
           outlined
-          className="w-40"
+          className="w-full sm:w-44"
           onClick={onBatal}
           disabled={loading}
         />
 
         <Button
-          label={loading ? "PROCESS..." : "DAFTAR"}
-          className="w-40"
+          label={loading ? "Memproses..." : "Daftar"}
+          icon={loading ? "pi pi-spin pi-spinner" : "pi pi-check"}
+          className="w-full sm:w-44"
           onClick={submit}
           disabled={
             loading ||

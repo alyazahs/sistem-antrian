@@ -103,11 +103,20 @@ export default function FormPengunjungDitemukan({
   };
 
   return (
-    <div className="mt-5">
+    <div>
       <Toast ref={toastRef} />
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.2fr_1fr]">
         <div className="space-y-4">
+          <div>
+            <div className="text-base font-bold text-slate-900">
+              Data Pengunjung
+            </div>
+            <div className="mt-1 text-sm text-slate-500">
+              Data sudah terdaftar dan siap dipakai untuk mengambil antrian.
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-slate-600">
               Nama Lengkap
@@ -145,6 +154,15 @@ export default function FormPengunjungDitemukan({
         </div>
 
         <div className="space-y-4">
+          <div>
+            <div className="text-base font-bold text-slate-900">
+              Kebutuhan Pelayanan
+            </div>
+            <div className="mt-1 text-sm text-slate-500">
+              Pilih jenis layanan yang akan dituju pengunjung.
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-slate-600">
               NIK
@@ -202,12 +220,12 @@ export default function FormPengunjungDitemukan({
         </div>
       </div>
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+      <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-center">
         <Button
           type="button"
           label="Batal"
           icon="pi pi-times"
-          severity="danger"
+          severity="secondary"
           outlined
           className="w-full sm:w-44"
           onClick={onBatal}
