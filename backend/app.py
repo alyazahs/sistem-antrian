@@ -83,7 +83,7 @@ def build_display_payload():
 
         current = conn.execute("""
           SELECT a.id, a.nomor_antrian, a.jenis_pelayanan, a.status,
-                 p.nama, p.nik
+                 p.nama
           FROM antrian a
           JOIN pengunjung p ON p.id = a.pengunjung_id
           WHERE a.status='dipanggil'
@@ -150,11 +150,32 @@ def require_auth(fn):
 
         try:
             payload = verify_token(token)
-            request.user = payload
         except SignatureExpired:
             return jsonify({"success": False, "message": "Token expired"}), 401
         except BadSignature:
             return jsonify({"success": False, "message": "Invalid token"}), 401
+
+        user_id = payload.get("id")
+        if not user_id:
+            return jsonify({"success": False, "message": "Invalid token"}), 401
+
+        conn = get_db()
+        try:
+            user = conn.execute("""
+                SELECT id, nama, email, role, status
+                FROM users
+                WHERE id=?
+            """, (user_id,)).fetchone()
+        finally:
+            conn.close()
+
+        if not user:
+            return jsonify({"success": False, "message": "User tidak ditemukan"}), 401
+
+        if user["status"] != "aktif":
+            return jsonify({"success": False, "message": f"Akun {user['status']}"}), 403
+
+        request.user = dict(user)
 
         return fn(*args, **kwargs)
 
@@ -748,6 +769,7 @@ def antrian_summary():
         conn.close()
 
 @app.get("/api/antrian/now")
+@require_auth
 def antrian_now():
     conn = get_db()
     try:
@@ -767,6 +789,7 @@ def antrian_now():
         conn.close()
 
 @app.get("/api/antrian/list")
+@require_auth
 def antrian_list():
     status = (request.args.get("status") or "menunggu").strip()
 
