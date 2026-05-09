@@ -415,6 +415,34 @@ export default function DisplayAntrian() {
             color: "#12332f",
           }}
         >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              borderRadius: 999,
+              background: connected ? "#dff5f1" : "#fff1d8",
+              color: connected ? "#0f766e" : "#9a5f0b",
+              padding: "0.45rem 0.75rem",
+              fontSize: "0.82rem",
+              fontWeight: 900,
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span
+              style={{
+                width: 9,
+                height: 9,
+                borderRadius: 999,
+                background: connected ? "#0f766e" : "#f59e0b",
+                boxShadow: connected
+                  ? "0 0 0 4px rgba(15, 118, 110, 0.12)"
+                  : "0 0 0 4px rgba(245, 158, 11, 0.14)",
+              }}
+            />
+            {connected ? "Realtime" : "Menyambung"}
+          </div>
+
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: "1rem", fontWeight: 700 }}>{formattedDate}</div>
 
