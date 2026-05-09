@@ -67,6 +67,61 @@ def hitung_umur(tanggal_lahir):
     except Exception:
         return None
 
+def _fetch_pengunjung_by_id(conn, pengunjung_id):
+    return conn.execute(
+        "SELECT * FROM pengunjung WHERE id=?",
+        (pengunjung_id,),
+    ).fetchone()
+
+def _build_pengunjung_updates(current, incoming, fallback=None):
+    updates = {}
+
+    for field in ("rfid_uid", "nik"):
+        value = incoming.get(field)
+        if value and current[field] != value:
+            updates[field] = value
+
+    for field in ("nama", "nohp", "tanggal_lahir", "alamat"):
+        value = incoming.get(field)
+        if value:
+            updates[field] = value
+        elif fallback and not current[field] and fallback[field]:
+            updates[field] = fallback[field]
+
+    return updates
+
+def _update_pengunjung_from_input(conn, current, incoming, fallback=None):
+    updates = _build_pengunjung_updates(current, incoming, fallback)
+    if not updates:
+        return current
+
+    fields = ", ".join(f"{field}=?" for field in updates)
+    params = list(updates.values())
+    params.append(current["id"])
+
+    conn.execute(
+        f"UPDATE pengunjung SET {fields} WHERE id=?",
+        params,
+    )
+
+    return _fetch_pengunjung_by_id(conn, current["id"])
+
+def _merge_pengunjung_records(conn, target, duplicate, incoming):
+    target_id = target["id"]
+    duplicate_id = duplicate["id"]
+    fallback = None
+
+    if target_id != duplicate_id:
+        fallback = duplicate
+        conn.execute(
+            "UPDATE antrian SET pengunjung_id=? WHERE pengunjung_id=?",
+            (target_id, duplicate_id),
+        )
+        conn.execute("DELETE FROM pengunjung WHERE id=?", (duplicate_id,))
+        target = _fetch_pengunjung_by_id(conn, target_id)
+
+    return _update_pengunjung_from_input(conn, target, incoming, fallback)
+
 def build_display_payload():
     conn = get_db()
     try:
@@ -588,6 +643,22 @@ def list_pengunjung():
     finally:
         conn.close()
 
+@app.delete("/api/pengunjung/<int:pengunjung_id>")
+@require_auth
+@require_role("kasi_pelayanan")
+def delete_pengunjung(pengunjung_id):
+    conn = get_db()
+    try:
+        cur = conn.execute("DELETE FROM pengunjung WHERE id=?", (pengunjung_id,))
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return jsonify({"success": False, "message": "Data pengunjung tidak ditemukan"}), 404
+
+        return jsonify({"success": True, "message": "Data identitas berhasil dihapus"})
+    finally:
+        conn.close()
+
 # SCAN RFID
 @app.get("/api/scan-rfid")
 @require_auth
@@ -637,34 +708,130 @@ def daftar_pengunjung():
 
     rfid_uid = clean_str(data.get("rfid_uid"))
     nik = clean_str(data.get("nik"))
+    tanpa_ktp = bool(data.get("tanpa_ktp"))
     nama = (data.get("nama") or "").strip()
     nohp = clean_str(data.get("nohp"))
     alamat = clean_str(data.get("alamat"))
     tanggal_lahir = clean_str(data.get("tanggal_lahir"))
+    incoming = {
+        "rfid_uid": rfid_uid,
+        "nik": nik,
+        "nama": nama,
+        "nohp": nohp,
+        "tanggal_lahir": tanggal_lahir,
+        "alamat": alamat,
+    }
+
+    if tanpa_ktp:
+        rfid_uid = None
+        nik = None
+        incoming["rfid_uid"] = None
+        incoming["nik"] = None
 
     if not nama:
         return jsonify({"success": False, "message": "Nama wajib diisi"}), 400
-    if not rfid_uid and not nik:
-        return jsonify({"success": False, "message": "RFID UID atau NIK wajib diisi"}), 400
+    if not tanpa_ktp and not nik:
+        return jsonify({
+            "success": False,
+            "message": "NIK wajib diisi untuk pendaftaran KTP. Gunakan Antrian Tanpa KTP jika belum punya NIK."
+        }), 400
 
     conn = get_db()
     try:
-        if rfid_uid and conn.execute("SELECT 1 FROM pengunjung WHERE rfid_uid=?", (rfid_uid,)).fetchone():
-            return jsonify({"success": False, "message": "RFID sudah terdaftar"}), 400
-        if nik and conn.execute("SELECT 1 FROM pengunjung WHERE nik=?", (nik,)).fetchone():
-            return jsonify({"success": False, "message": "NIK sudah terdaftar"}), 400
+        existing_by_rfid = None
+        existing_by_nik = None
 
-        conn.execute("""
+        if rfid_uid:
+            existing_by_rfid = conn.execute(
+                "SELECT * FROM pengunjung WHERE rfid_uid=?",
+                (rfid_uid,),
+            ).fetchone()
+
+        if nik:
+            existing_by_nik = conn.execute(
+                "SELECT * FROM pengunjung WHERE nik=?",
+                (nik,),
+            ).fetchone()
+
+        if existing_by_rfid and existing_by_nik:
+            if existing_by_rfid["id"] == existing_by_nik["id"]:
+                row = _update_pengunjung_from_input(conn, existing_by_nik, incoming)
+                conn.commit()
+                return jsonify({
+                    "success": True,
+                    "pengunjung": dict(row),
+                    "linked": True,
+                })
+
+            if existing_by_rfid["nik"] and existing_by_rfid["nik"] != nik:
+                return jsonify({
+                    "success": False,
+                    "message": "RFID sudah terdaftar dengan NIK lain"
+                }), 409
+
+            if existing_by_nik["rfid_uid"] and existing_by_nik["rfid_uid"] != rfid_uid:
+                return jsonify({
+                    "success": False,
+                    "message": "NIK sudah terdaftar dengan RFID lain"
+                }), 409
+
+            row = _merge_pengunjung_records(
+                conn,
+                target=existing_by_nik,
+                duplicate=existing_by_rfid,
+                incoming=incoming,
+            )
+            conn.commit()
+
+            return jsonify({
+                "success": True,
+                "pengunjung": dict(row),
+                "linked": True,
+                "merged": True,
+            })
+
+        if existing_by_rfid:
+            if nik and existing_by_rfid["nik"] and existing_by_rfid["nik"] != nik:
+                return jsonify({
+                    "success": False,
+                    "message": "RFID sudah terdaftar dengan NIK lain"
+                }), 409
+
+            row = _update_pengunjung_from_input(conn, existing_by_rfid, incoming)
+            conn.commit()
+
+            return jsonify({
+                "success": True,
+                "pengunjung": dict(row),
+                "linked": True,
+            })
+
+        if existing_by_nik:
+            if rfid_uid and existing_by_nik["rfid_uid"] and existing_by_nik["rfid_uid"] != rfid_uid:
+                return jsonify({
+                    "success": False,
+                    "message": "NIK sudah terdaftar dengan RFID lain"
+                }), 409
+
+            row = _update_pengunjung_from_input(conn, existing_by_nik, incoming)
+            conn.commit()
+
+            return jsonify({
+                "success": True,
+                "pengunjung": dict(row),
+                "linked": True,
+            })
+
+        cur = conn.execute("""
             INSERT INTO pengunjung (rfid_uid, nik, nama, nohp, tanggal_lahir, alamat)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (rfid_uid, nik, nama, nohp, tanggal_lahir, alamat))
         conn.commit()
 
-        row = conn.execute("""
-            SELECT * FROM pengunjung
-            WHERE (rfid_uid = ? AND ? IS NOT NULL) OR (nik = ? AND ? IS NOT NULL)
-            ORDER BY id DESC LIMIT 1
-        """, (rfid_uid, rfid_uid, nik, nik)).fetchone()
+        row = conn.execute(
+            "SELECT * FROM pengunjung WHERE id=?",
+            (cur.lastrowid,),
+        ).fetchone()
 
         return jsonify({"success": True, "pengunjung": dict(row) if row else None})
     finally:
@@ -679,16 +846,24 @@ def ambil_antrian():
 
     rfid_uid = (data.get("rfid_uid") or "").strip() or None
     nik = (data.get("nik") or "").strip() or None
+    pengunjung_id = data.get("pengunjung_id")
     jenis = (data.get("jenis_pelayanan") or "").strip()
+
+    try:
+        pengunjung_id = int(pengunjung_id) if pengunjung_id is not None else None
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "ID pengunjung tidak valid"}), 400
 
     if not jenis:
         return jsonify({"success": False, "message": "Jenis pelayanan wajib diisi"}), 400
-    if not rfid_uid and not nik:
-        return jsonify({"success": False, "message": "RFID UID atau NIK wajib diisi"}), 400
+    if not pengunjung_id and not rfid_uid and not nik:
+        return jsonify({"success": False, "message": "Pengunjung wajib dipilih"}), 400
 
     conn = get_db()
     try:
-        if rfid_uid:
+        if pengunjung_id:
+            pengunjung = conn.execute("SELECT * FROM pengunjung WHERE id=?", (pengunjung_id,)).fetchone()
+        elif rfid_uid:
             pengunjung = conn.execute("SELECT * FROM pengunjung WHERE rfid_uid=?", (rfid_uid,)).fetchone()
         else:
             pengunjung = conn.execute("SELECT * FROM pengunjung WHERE nik=?", (nik,)).fetchone()
