@@ -17,6 +17,8 @@ export default function FormPengunjungBaru({
   onBatal,
   onSubmit,
   nikAwal = "",
+  tanpaKtp = false,
+  wajibNik = true,
 }) {
   const toastRef = useRef(null);
 
@@ -36,10 +38,15 @@ export default function FormPengunjungBaru({
   const [savingJenis, setSavingJenis] = useState(false);
 
   useEffect(() => {
+    if (tanpaKtp && form.nik) {
+      setForm((prev) => ({ ...prev, nik: "" }));
+      return;
+    }
+
     if (nikAwal && !form.nik) {
       setForm((prev) => ({ ...prev, nik: nikAwal }));
     }
-  }, [nikAwal, form.nik]);
+  }, [nikAwal, form.nik, tanpaKtp]);
 
   const loadJenis = async () => {
     setLoadingJenis(true);
@@ -97,6 +104,8 @@ export default function FormPengunjungBaru({
   const submit = () => {
     onSubmit({
       ...form,
+      tanpa_ktp: tanpaKtp,
+      nik: tanpaKtp ? "" : form.nik,
       jenis_pelayanan_id: form.jenis_pelayanan?.id ?? null,
       jenis_pelayanan: form.jenis_pelayanan?.nama ?? "",
     });
@@ -155,19 +164,28 @@ export default function FormPengunjungBaru({
         </div>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-600">
-              NIK
-            </label>
-            <InputText
-              value={form.nik}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, nik: e.target.value }))
-              }
-              className="mt-2 w-full"
-              placeholder="Masukkan NIK (wajib jika RFID tidak ada)"
-            />
-          </div>
+          {!tanpaKtp ? (
+            <div>
+              <label className="block text-xs font-semibold text-slate-600">
+                NIK
+              </label>
+              <InputText
+                value={form.nik}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, nik: e.target.value }))
+                }
+                className="mt-2 w-full"
+                placeholder="Masukkan NIK"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                NIK dipakai untuk mencegah data ganda saat kartu/UID terbaca di lain waktu.
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              Pendaftaran ini tidak memakai NIK atau UID. Gunakan hanya untuk warga yang belum memiliki KTP/NIK.
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-600">
@@ -235,7 +253,7 @@ export default function FormPengunjungBaru({
           disabled={
             loading ||
             !form.nama.trim() ||
-            !form.nik.trim() ||
+            (wajibNik && !form.nik.trim()) ||
             !form.jenis_pelayanan
           }
         />

@@ -15,6 +15,7 @@ const STATUS_LABELS = {
   scanning: "Sedang Memindai",
   terdaftar: "Pengunjung Ditemukan",
   belum_terdaftar: "Belum Terdaftar",
+  tanpa_ktp: "Antrian Tanpa KTP",
   error: "Terjadi Kesalahan",
 };
 
@@ -44,6 +45,14 @@ export default function Pendaftaran() {
     setNikCari("");
     setLoading(false);
     setLoadingCari(false);
+  }, []);
+
+  const mulaiTanpaKtp = useCallback(() => {
+    setStatusScan("tanpa_ktp");
+    setPesanScan("Mode antrian tanpa KTP. Isi data pengunjung secara manual.");
+    setRfidUid("");
+    setPengunjung(null);
+    setNikCari("");
   }, []);
 
   // polling scan rfid
@@ -147,16 +156,24 @@ export default function Pendaftaran() {
       typeof form.jenis_pelayanan === "string"
         ? form.jenis_pelayanan.trim()
         : form.jenis_pelayanan?.nama || "";
+    const tanpaKtp = !!form.tanpa_ktp;
 
     if (!nama) return showAppToast(toastRef, "warn", "Nama wajib diisi.");
     if (!jenis) return showAppToast(toastRef, "warn", "Jenis pelayanan wajib diisi.");
-    if (!rfidUid && !nik) return showAppToast(toastRef, "warn", "RFID belum ada. Isi NIK untuk daftar manual.");
+    if (!tanpaKtp && !nik) {
+      return showAppToast(
+        toastRef,
+        "warn",
+        "NIK wajib untuk pendaftaran KTP. Gunakan Antrian Tanpa KTP jika belum punya NIK."
+      );
+    }
 
     setLoading(true);
     try {
       const reg = await daftarPengunjung({
-        rfid_uid: rfidUid || null,
-        nik: nik || null,
+        rfid_uid: tanpaKtp ? null : rfidUid || null,
+        nik: tanpaKtp ? null : nik || null,
+        tanpa_ktp: tanpaKtp,
         nama,
         nohp: (form.nohp || "").trim() || null,
         tanggal_lahir: form.tanggal_lahir || null,
@@ -166,9 +183,14 @@ export default function Pendaftaran() {
       const dataPengunjung = reg?.pengunjung;
       setPengunjung(dataPengunjung || null);
 
-      const payloadAntrian = rfidUid
-        ? { rfid_uid: rfidUid, jenis_pelayanan: jenis }
-        : { nik, jenis_pelayanan: jenis };
+      if (!dataPengunjung?.id) {
+        throw new Error("Data pengunjung belum berhasil dibuat.");
+      }
+
+      const payloadAntrian = {
+        pengunjung_id: dataPengunjung.id,
+        jenis_pelayanan: jenis,
+      };
 
       const q = await ambilAntrian(payloadAntrian);
 
@@ -193,7 +215,9 @@ export default function Pendaftaran() {
 
     setLoading(true);
     try {
-      const payload = rfidUid
+      const payload = pengunjung?.id
+        ? { pengunjung_id: pengunjung.id, jenis_pelayanan: jenis }
+        : rfidUid
         ? { rfid_uid: rfidUid, jenis_pelayanan: jenis }
         : { nik: (pengunjung?.nik || "").trim(), jenis_pelayanan: jenis };
 
@@ -209,7 +233,8 @@ export default function Pendaftaran() {
     }
   };
 
-  const tampilBaru = statusScan === "belum_terdaftar";
+  const tanpaKtp = statusScan === "tanpa_ktp";
+  const tampilBaru = statusScan === "belum_terdaftar" || tanpaKtp;
   const tampilDitemukan = statusScan === "terdaftar" && (pengunjung || rfidUid);
 
   return (
@@ -250,6 +275,16 @@ export default function Pendaftaran() {
                 icon="pi pi-search"
                 label="Cari"
               />
+
+              <Button
+                type="button"
+                onClick={mulaiTanpaKtp}
+                disabled={loading || loadingCari}
+                icon="pi pi-user-plus"
+                label="Antrian Tanpa KTP"
+                severity="secondary"
+                outlined
+              />
             </div>
 
             <Divider className="my-1" />
@@ -265,16 +300,26 @@ export default function Pendaftaran() {
               </div>
 
               <div className="flex items-center gap-2">
-                {statusScan === "idle" && (
-                  <Button label="Mulai Scan" icon="pi pi-spinner" onClick={mulaiScan} />
-                )}
+                <Button
+                  label={statusScan === "scanning" ? "Scanning..." : "Mulai Scan"}
+                  icon="pi pi-spinner"
+                  onClick={mulaiScan}
+                  disabled={statusScan === "scanning" || loading}
+                />
               </div>
             </div>
 
-            {tampilBaru && (
+            {statusScan === "belum_terdaftar" && (
               <Message
                 severity="warn"
-                text="Data pengunjung tidak ditemukan. Silakan masukkan data pengunjung baru."
+                text="Data pengunjung tidak ditemukan. Isi NIK agar data lama bisa terhubung jika kartu pernah didaftarkan manual."
+              />
+            )}
+
+            {tanpaKtp && (
+              <Message
+                severity="info"
+                text="Mode tanpa KTP digunakan untuk warga yang belum punya NIK/KTP. Data dibuat manual dan antrian tetap bisa diambil."
               />
             )}
 
@@ -291,6 +336,8 @@ export default function Pendaftaran() {
                 onBatal={reset}
                 onSubmit={submitPengunjungBaru}
                 nikAwal={nikCari}
+                tanpaKtp={tanpaKtp}
+                wajibNik={!tanpaKtp}
               />
             )}
 
