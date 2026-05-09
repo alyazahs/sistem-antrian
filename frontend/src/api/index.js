@@ -52,6 +52,20 @@ export const updateStoredUser = (user) => {
   window.dispatchEvent(new CustomEvent("auth:user-updated", { detail: user }));
 };
 
+export const updateStoredAuth = ({ token, user }) => {
+  const storage = getAuthStorage();
+  if (!storage) return;
+
+  if (token) {
+    storage.setItem(TOKEN_KEY, token);
+  }
+
+  if (user) {
+    storage.setItem(USER_KEY, JSON.stringify(user));
+    window.dispatchEvent(new CustomEvent("auth:user-updated", { detail: user }));
+  }
+};
+
 export const clearAuth = () => {
   clearStorage();
 };
@@ -102,6 +116,9 @@ export const login = async (payload, remember = true) => {
 };
 
 export const getMe = async () => (await api.get("/auth/me")).data;
+
+export const updateProfile = async (payload) =>
+  (await api.put("/auth/profile", payload)).data;
 
 export const logout = () => {
   clearAuth();

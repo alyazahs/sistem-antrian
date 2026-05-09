@@ -1,8 +1,12 @@
 import { useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Toolbar } from "primereact/toolbar";
 import { Avatar } from "primereact/avatar";
 
 export default function Headbar({ title, user = null }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const dateStr = useMemo(() => {
     const now = new Date();
     const options = {
@@ -37,6 +41,8 @@ export default function Headbar({ title, user = null }) {
     }
   }, [user]);
 
+  const isEditProfile = location.pathname.startsWith("/edit-profile");
+
   const left = (
     <div className="flex flex-col">
       <span className="mb-1 inline-flex w-fit items-center rounded-full bg-[#2BB0A6]/10 px-3 py-1 text-xs font-semibold text-[#16877F]">
@@ -50,23 +56,40 @@ export default function Headbar({ title, user = null }) {
   );
 
   const right = (
-    <div className="flex items-center gap-3 rounded-2xl border border-white/60 bg-white/70 px-3 py-2 shadow-sm backdrop-blur-sm">
-      <Avatar
-        label={initials}
-        shape="circle"
-        className="h-[46px] w-[46px] border-2 border-[#2BB0A6]/20 bg-[#2BB0A6] text-white shadow-sm"
-      />
-      <div className="text-right leading-tight">
-        <strong className="block text-[15px] font-bold text-slate-800">
-          {user?.nama || "Pengguna"}
-        </strong>
-        <small className="block text-xs font-medium text-[#16877F]">
-          {roleLabel}
-        </small>
-        <small className="block text-xs text-slate-500">
-          Kecamatan Jiwan
-        </small>
+    <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 rounded-2xl border border-white/60 bg-white/70 px-3 py-2 shadow-sm backdrop-blur-sm">
+        <Avatar
+          label={initials}
+          shape="circle"
+          className="h-[46px] w-[46px] border-2 border-[#2BB0A6]/20 bg-[#2BB0A6] text-white shadow-sm"
+        />
+        <div className="text-right leading-tight">
+          <strong className="block text-[15px] font-bold text-slate-800">
+            {user?.nama || "Pengguna"}
+          </strong>
+          <small className="block text-xs font-medium text-[#16877F]">
+            {roleLabel}
+          </small>
+          <small className="block text-xs text-slate-500">
+            Kecamatan Jiwan
+          </small>
+        </div>
       </div>
+
+      <button
+        type="button"
+        title="Edit profil"
+        aria-label="Edit profil"
+        onClick={() => navigate("/edit-profile")}
+        className={[
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm transition",
+          isEditProfile
+            ? "border-[#2BB0A6] bg-[#2BB0A6] text-white"
+            : "border-white/70 bg-white/80 text-slate-700 hover:-translate-y-[1px] hover:bg-white hover:text-[#16877F]",
+        ].join(" ")}
+      >
+        <i className="pi pi-chevron-down text-xs" />
+      </button>
     </div>
   );
 

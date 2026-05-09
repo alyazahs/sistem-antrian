@@ -45,6 +45,11 @@ const ROUTES_MAP = {
     title: "Laporan",
     match: (pathname) => pathname.startsWith("/laporan"),
   },
+  "edit-profile": {
+    path: "/edit-profile",
+    title: "Edit Profil",
+    match: (pathname) => pathname.startsWith("/edit-profile"),
+  },
 };
 
 const getActiveMenuFromPath = (pathname) => {

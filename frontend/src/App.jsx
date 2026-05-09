@@ -9,6 +9,7 @@ import JenisPelayananPage from "./pages/master/jenis_pelayanan/page";
 import IdentitasPage from "./pages/master/identitas/page";
 import Laporan from "./pages/laporan/page"; 
 import KelolaUsers from "./pages/kelola_user/page";
+import EditProfile from "./pages/editProfile";
 
 export default function App() {
   return (
@@ -89,6 +90,15 @@ export default function App() {
         element={
           <AppLayout>
             <KelolaUsers />
+          </AppLayout>
+        }
+      />
+
+      <Route
+        path="/edit-profile"
+        element={
+          <AppLayout>
+            <EditProfile />
           </AppLayout>
         }
       />
