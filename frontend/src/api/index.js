@@ -159,6 +159,9 @@ export const scanRfid = async () => (await api.get("/scan-rfid")).data;
 export const listPengunjung = async () =>
   (await api.get("/pengunjung")).data;
 
+export const deletePengunjung = async (id) =>
+  (await api.delete(`/pengunjung/${id}`)).data;
+
 export const cariNIK = async (nik) =>
   (await api.get("/cari-nik", { params: { nik } })).data;
 
