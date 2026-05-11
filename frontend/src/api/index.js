@@ -201,6 +201,9 @@ export const listRiwayatPelayanan = async (params={}) =>
 export const deleteRiwayatPelayanan = async (id) =>
   (await api.delete(`/laporan/${id}`)).data;
 
+export const deleteLogLaporan = async (params = {}) =>
+  (await api.delete("/laporan", { params })).data;
+
 // DASHBOARD
 export const dashboardSummary = async () =>
   (await api.get("/dashboard")).data;

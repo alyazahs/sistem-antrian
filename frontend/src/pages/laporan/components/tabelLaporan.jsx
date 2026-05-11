@@ -3,13 +3,13 @@ import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Tooltip } from "primereact/tooltip";
 
-const TabelLaporan = ({ data, loading, onDetail, onDelete }) => {
+const TabelLaporan = ({ data, loading, onDetail, onDelete, canDelete = false }) => {
   const formatTanggal = (row) => row.tanggal_kunjungan || "-";
 
   return (
     <>
       <Tooltip target=".lp-btn-detail" content="Detail" />
-      <Tooltip target=".lp-btn-del" content="Hapus" />
+      {canDelete && <Tooltip target=".lp-btn-del" content="Hapus" />}
 
       <DataTable
         value={data}
@@ -47,18 +47,20 @@ const TabelLaporan = ({ data, loading, onDetail, onDelete }) => {
                 className="lp-btn-detail"
                 onClick={() => onDetail(row)}
               />
-              <Button
-                icon="pi pi-trash"
-                severity="danger"
-                size="small"
-                rounded
-                outlined
-                className="lp-btn-del"
-                onClick={() => onDelete(row)}
-              />
+              {canDelete && (
+                <Button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  size="small"
+                  rounded
+                  outlined
+                  className="lp-btn-del"
+                  onClick={() => onDelete(row)}
+                />
+              )}
             </div>
           )}
-          style={{ width: "140px" }}
+          style={{ width: canDelete ? "140px" : "90px" }}
         />
       </DataTable>
     </>
