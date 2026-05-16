@@ -194,7 +194,7 @@ export default function Sidebar({
         <button
           type="button"
           onClick={confirmLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-white to-red-50 px-4 py-3 font-bold text-slate-700 transition-all duration-200 hover:-translate-y-[1px] hover:text-red-600 hover:shadow-md active:scale-[0.99]"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-100 px-4 py-3 font-bold text-slate-700 transition-all duration-200 hover:-translate-y-[1px] hover:text-red-600 hover:shadow-md active:scale-[0.99]"
         >
           <i className="fa-solid fa-arrow-right-from-bracket" />
           Logout
