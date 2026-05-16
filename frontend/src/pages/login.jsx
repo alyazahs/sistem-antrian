@@ -75,13 +75,14 @@ export default function Login() {
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
         <div className="relative hidden overflow-hidden lg:block">
           <img
-            src="/paten.png"
+            src="/pelayanan.png"
             alt="PELAYANAN KECAMATAN JIWAN"
             className="absolute inset-0 h-full w-full object-cover"
             onError={(e) => {
               e.currentTarget.style.display = "none";
             }}
           />
+          <div className="absolute inset-0 bg-black/30" />
         </div>
 
         <div className="flex min-h-screen items-center justify-center bg-white px-5 py-8 sm:px-8 lg:px-12">
