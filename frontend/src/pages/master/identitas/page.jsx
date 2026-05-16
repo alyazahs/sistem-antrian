@@ -85,7 +85,6 @@ export default function IdentitasPage() {
   return (
     <div className="card">
       <Toast ref={toastRef} />
-      <ConfirmDialog />
 
       <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h3 className="text-xl font-semibold">Data Pengunjung Terdaftar</h3>
