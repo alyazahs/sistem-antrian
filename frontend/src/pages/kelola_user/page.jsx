@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "primereact/button";
-import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { confirmDialog } from "primereact/confirmdialog";
 import { Toast } from "primereact/toast";
 import { InputText } from "primereact/inputtext";
 import {
@@ -8,7 +8,6 @@ import {
   deleteUser,
   getUser,
   listUsers,
-  resetPasswordUser,
   updateUser,
 } from "../../api";
 import TabelKelolaUser from "./components/tabelKelolaUser";
@@ -21,7 +20,6 @@ const initialForm = {
   role: "admin_pelayanan",
   status: "aktif",
   password: "",
-  reset_password: "",
 };
 
 export default function KelolaUserPage() {
@@ -96,21 +94,41 @@ export default function KelolaUserPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const getEditedUser = () =>
+    originalData.find((item) => Number(item.id) === Number(form.id));
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
     try {
       if (form.id) {
-        await updateUser(form.id, {
-          nama: form.nama,
+        const editedUser = getEditedUser();
+        const userPayload = {
+          nama: String(form.nama || "").trim(),
           role: form.role,
           status: form.status,
-        });
+        };
+        const hasUserChanges =
+          !editedUser ||
+          userPayload.nama !== String(editedUser.nama || "").trim() ||
+          userPayload.role !== editedUser.role ||
+          userPayload.status !== editedUser.status;
 
-        if (String(form.reset_password || "").trim()) {
-          await resetPasswordUser(form.id, {
-            password: form.reset_password,
+        if (!hasUserChanges) {
+          toastRef.current?.show({
+            severity: "info",
+            summary: "Tidak ada perubahan",
+            detail: "Tidak ada data yang diubah",
+            life: 2000,
           });
+          setDialogVisible(false);
+          setForm(initialForm);
+          setErrors({});
+          return;
+        }
+
+        if (hasUserChanges) {
+          await updateUser(form.id, userPayload);
         }
 
         toastRef.current?.show({
@@ -159,7 +177,6 @@ export default function KelolaUserPage() {
       role: row.role || "admin_pelayanan",
       status: row.status || "aktif",
       password: "",
-      reset_password: "",
     });
     setErrors({});
     setDialogVisible(true);
@@ -209,7 +226,6 @@ export default function KelolaUserPage() {
   return (
     <div className="card">
       <Toast ref={toastRef} />
-      <ConfirmDialog />
 
       <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h3 className="text-xl font-semibold">Kelola User</h3>

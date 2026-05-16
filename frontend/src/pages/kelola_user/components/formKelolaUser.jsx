@@ -89,7 +89,7 @@ const FormDialogKelolaUser = ({
           {errors.status && <small className="text-red-500">{errors.status}</small>}
         </div>
 
-        {!isEdit ? (
+        {!isEdit && (
           <div>
             <label>Password</label>
             <Password
@@ -101,19 +101,6 @@ const FormDialogKelolaUser = ({
               onChange={(e) => setForm({ ...form, password: e.target.value })}
             />
             {errors.password && <small className="text-red-500">{errors.password}</small>}
-          </div>
-        ) : (
-          <div>
-            <label>Reset Password</label>
-            <Password
-              toggleMask
-              feedback={false}
-              className="w-full mt-2"
-              inputClassName="w-full"
-              value={form.reset_password || ""}
-              onChange={(e) => setForm({ ...form, reset_password: e.target.value })}
-              placeholder="Kosongkan jika tidak diubah"
-            />
           </div>
         )}
 
