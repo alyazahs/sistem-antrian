@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { confirmDialog } from "primereact/confirmdialog";
 import { InputText } from "primereact/inputtext";
 import { Toast } from "primereact/toast";
 import TabelIdentitas from "./components/tabelIdentitas";
