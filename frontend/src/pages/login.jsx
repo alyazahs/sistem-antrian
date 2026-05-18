@@ -71,82 +71,110 @@ export default function Login() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
-        <div className="relative hidden overflow-hidden lg:block">
-          <img
-            src="/pelayanan.png"
-            alt="PELAYANAN KECAMATAN JIWAN"
-            className="absolute inset-0 h-full w-full object-cover"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
-          <div className="absolute inset-0 bg-black/30" />
-        </div>
+    <main className="h-screen overflow-hidden bg-[#f3f7f6]">
+      <div className="grid h-full grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
+        {/* Bagian Foto */}
+       <section className="relative hidden h-screen overflow-hidden bg-white lg:block">
+  <div className="relative h-full overflow-hidden rounded-r-[54px] bg-white">
+            <img
+              src="/pelayanan.png"
+              alt="Pelayanan Kecamatan Jiwan"
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
 
-        <div className="flex min-h-screen items-center justify-center bg-white px-5 py-8 sm:px-8 lg:px-12">
-          <div className="w-full max-w-md">
-            <div className="mb-8">
-              <div className="mb-6 flex items-center justify-center gap-4">
-                <img
-                  src="/logo-kab.png"
-                  alt="Logo Kabupaten"
-                  className="h-14 w-14 object-contain"
-                  onError={(e) => (e.currentTarget.style.display = "none")}
-                />
-
-                <div className="h-10 w-px bg-slate-200" />
-
-                <img
-                  src="/pesilat.png"
-                  alt="Logo PATEN"
-                  className="h-14 w-14 object-contain"
-                  onError={(e) => (e.currentTarget.style.display = "none")}
-                />
-              </div>
-
-              <div className="text-center">
-                <div className="text-2xl font-extrabold leading-tight text-slate-900 sm:text-3xl">
-                  Pelayanan Kecamatan Jiwan
-                </div>
-                <div className="mt-2 text-sm text-slate-500">
-                  Pelayanan Administrasi Terpadu Kecamatan
-                </div>
-              </div>
+            <div className="absolute left-8 top-8 rounded-full border border-white/70 bg-white/85 px-5 py-2 text-sm font-semibold text-[#126d63] shadow-sm backdrop-blur">
+              Sistem Antrian Digital
             </div>
 
-            {errMsg ? (
-              <div className="mt-6">
-                <Message severity="error" text={errMsg} />
+            <div className="absolute bottom-8 left-8 right-8">
+              <div className="w-fit rounded-3xl border border-white/70 bg-white/90 px-7 py-5 shadow-xl backdrop-blur">
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#126d63]">
+                  Kecamatan Jiwan
+                </p>
+                <h1 className="mt-2 max-w-[520px] text-3xl font-extrabold leading-tight text-slate-950">
+                  Pelayanan Administrasi Lebih Tertib dan Efisien
+                </h1>
               </div>
-            ) : null}
+            </div>
+          </div>
+        </section>
+
+        {/* Bagian Form */}
+        <section className="flex h-screen items-center justify-center overflow-hidden bg-white px-5 py-5 sm:px-8 lg:px-12">
+          <div className="w-full max-w-[500px]">
+            <div className="mb-6 text-center">
+              <div className="mb-5 flex items-center justify-center">
+                <div className="flex items-center gap-5 rounded-full border border-slate-200 bg-white px-6 py-3 shadow-[0_12px_35px_rgba(15,23,42,0.08)]">
+                  <img
+                    src="/logo-kab.png"
+                    alt="Logo Kabupaten"
+                    className="h-12 w-12 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+
+                  <div className="h-9 w-px bg-slate-200" />
+
+                  <img
+                    src="/pesilat.png"
+                    alt="Logo PATEN"
+                    className="h-12 w-12 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                </div>
+              </div>
+
+              <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#126d63]">
+                Login Petugas
+              </p>
+
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+                Selamat Datang
+              </h2>
+
+              <p className="mt-3 text-sm font-medium leading-6 text-slate-500 sm:text-base">
+                Pelayanan Administrasi Terpadu Kecamatan Jiwan
+              </p>
+            </div>
+
+            {errMsg && (
+              <div className="mb-4">
+                <Message severity="error" text={errMsg} className="w-full" />
+              </div>
+            )}
 
             <form
               onSubmit={onSubmit}
-              className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+              className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-7"
             >
               <div className="mb-6">
-                <div className="text-lg font-bold text-slate-900">
+                <h3 className="text-2xl font-bold text-slate-950">
                   Masuk Sistem
-                </div>
-                <div className="mt-1 text-sm text-slate-500">
+                </h3>
+                <p className="mt-1.5 text-sm leading-6 text-slate-500">
                   Gunakan akun petugas yang sudah terdaftar.
-                </div>
+                </p>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Email
                 </label>
+
                 <span className="p-input-icon-left w-full">
                   <i className="pi pi-envelope ml-2 text-slate-400" />
                   <InputText
                     value={form.email}
                     onChange={(e) =>
-                      setForm((p) => ({ ...p, email: e.target.value }))
+                      setForm((prev) => ({ ...prev, email: e.target.value }))
                     }
-                    className="w-full pl-8"
+                    className="w-full rounded-xl pl-9 !py-3 !text-sm"
                     placeholder="Masukkan email"
                     autoComplete="username"
                     autoFocus
@@ -154,36 +182,43 @@ export default function Login() {
                 </span>
               </div>
 
-              <div className="mt-5 space-y-2">
-                <label className="text-sm font-semibold text-slate-700">
+              <div className="mt-4">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Password
                 </label>
 
                 <Password
                   value={form.password}
                   onChange={(e) =>
-                    setForm((p) => ({ ...p, password: e.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      password: e.target.value,
+                    }))
                   }
                   toggleMask
                   feedback={false}
                   className="w-full"
-                  inputClassName="w-full"
+                  inputClassName="w-full rounded-xl !py-3 !text-sm"
                   placeholder="Masukkan password"
                   autoComplete="current-password"
                 />
               </div>
 
-              <div className="mt-5 flex items-center gap-3">
+              <div className="mt-4 flex items-center gap-3">
                 <Checkbox
                   inputId="remember"
                   checked={form.remember}
                   onChange={(e) =>
-                    setForm((p) => ({ ...p, remember: e.checked }))
+                    setForm((prev) => ({
+                      ...prev,
+                      remember: e.checked,
+                    }))
                   }
                 />
+
                 <label
                   htmlFor="remember"
-                  className="cursor-pointer text-sm text-slate-600"
+                  className="cursor-pointer text-sm font-medium text-slate-600"
                 >
                   Ingat saya
                 </label>
@@ -194,18 +229,19 @@ export default function Login() {
                 label={loading ? "Memproses..." : "Masuk"}
                 icon={loading ? "pi pi-spin pi-spinner" : "pi pi-sign-in"}
                 disabled={!canSubmit}
-                className="mt-6 w-full !py-3 !font-semibold"
-                severity="success"
-                style={{ background: "#2f8f84", borderColor: "#2f8f84" }}
+                className="mt-6 w-full rounded-xl !border-0 !py-3 !text-sm !font-bold shadow-[0_14px_35px_rgba(18,109,99,0.28)]"
+                style={{
+                  background: canSubmit ? "#126d63" : "#94a3b8",
+                }}
               />
             </form>
 
-            <div className="mt-6 text-center text-xs text-slate-400">
-              {currentYear} Kecamatan Jiwan
-            </div>
+            <p className="mt-5 text-center text-xs font-medium text-slate-400">
+              &copy; {currentYear} Kecamatan Jiwan. Semua hak dilindungi.
+            </p>
           </div>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
