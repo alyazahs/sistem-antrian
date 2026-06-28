@@ -267,7 +267,6 @@ export default function Pendaftaran() {
         </span>
       </div>
 
-      {/* <div className="-mx-8 border-y border-slate-200 bg-slate-50 px-8 py-5"> */}
       <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between"></div>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -279,30 +278,6 @@ export default function Pendaftaran() {
                 Gunakan scan e-KTP, cari NIK manual, atau mode tanpa KTP.
               </div>
             </div>
-
-            {/* <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              {canReset && (
-                <Button
-                  type="button"
-                  label="Reset"
-                  icon="pi pi-refresh"
-                  severity="secondary"
-                  outlined
-                  onClick={reset}
-                  disabled={loading || loadingCari}
-                  className="w-full sm:w-auto"
-                />
-              )}
-
-              <Button
-                type="button"
-                label={statusScan === "scanning" ? "Scanning..." : "Mulai Scan"}
-                icon={statusScan === "scanning" ? "pi pi-spin pi-spinner" : "pi pi-id-card"}
-                onClick={mulaiScan}
-                disabled={statusScan === "scanning" || loading}
-                className="w-full sm:w-auto"
-              />
-            </div> */}
           </div>
 
           <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
