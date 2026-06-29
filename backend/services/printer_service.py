@@ -1,6 +1,8 @@
-import datetime
+﻿import datetime
 import platform
-import traceback
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     import libusb_package
@@ -15,7 +17,7 @@ try:
     from escpos.printer import Usb, Dummy
     _ESCPOS_OK = True
 except ImportError:
-    print("[PRINTER] python-escpos tidak terinstall. Menggunakan mode dummy.")
+    logger.info("Printer dependency tidak tersedia, menggunakan mode dummy.")
     _ESCPOS_OK = False
 
     class Dummy:
@@ -51,10 +53,7 @@ class PrinterService:
             return
 
         try:
-            print(
-                f"[PRINTER] Menghubungkan ke USB "
-                f"(VID={hex(self.USB_VENDOR_ID)}, PID={hex(self.USB_PRODUCT_ID)})..."
-            )
+            logger.info("Menghubungkan printer USB VID=%s PID=%s", hex(self.USB_VENDOR_ID), hex(self.USB_PRODUCT_ID))
             self._printer = Usb(
                 self.USB_VENDOR_ID,
                 self.USB_PRODUCT_ID,
@@ -66,9 +65,9 @@ class PrinterService:
                 self._printer.device.clear_halt(0x04)
             except Exception:
                 pass
-            print("[PRINTER] Terhubung.")
+            logger.info("Printer terhubung.")
         except Exception as e:
-            print(f"[PRINTER] Gagal connect: {e}. Beralih ke mode dummy.")
+            logger.warning("Gagal connect printer: %s. Menggunakan mode dummy.", e)
             self._printer = Dummy()
 
     def _get_printer(self):
@@ -167,15 +166,12 @@ class PrinterService:
             self._cut(printer)
 
             if isinstance(printer, Dummy):
-                print("\n" + "=" * 36)
-                print("   [VIRTUAL THERMAL PRINTER OUTPUT]   ")
-                print(printer.output.decode("utf-8", errors="replace"))
-                print("=" * 36 + "\n")
+                logger.debug("Virtual printer output:\n%s", printer.output.decode("utf-8", errors="replace"))
                 printer.clear()
 
         except Exception as e:
-            print(f"[PRINTER] Gagal cetak tiket: {e}")
-            traceback.print_exc()
+            logger.error("Gagal cetak tiket: %s", e)
+            logger.debug("Traceback printer", exc_info=True)
             self._printer = None
 
     def close(self) -> None:
@@ -185,6 +181,5 @@ class PrinterService:
             except Exception:
                 pass
         self._printer = None
-
 
 printer_service = PrinterService()
