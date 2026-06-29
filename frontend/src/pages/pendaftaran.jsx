@@ -285,10 +285,13 @@ export default function Pendaftaran() {
               <i className="pi pi-search ml-2" />
               <InputText
                 value={nikCari}
-                onChange={(e) => setNikCari(e.target.value)}
+                onChange={(e) => setNikCari(e.target.value.replace(/\D/g, ""))}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleCariNIK();
                 }}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={16}
                 placeholder="Cari nomor NIK jika kartu tidak terbaca"
                 className="w-full pl-8"
                 disabled={loading || statusScan === "scanning"}

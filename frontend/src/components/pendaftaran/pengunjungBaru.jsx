@@ -149,8 +149,11 @@ export default function FormPengunjungBaru({
             <InputText
               value={form.nohp}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, nohp: e.target.value }))
+                setForm((prev) => ({ ...prev, nohp: e.target.value.replace(/\D/g, "") }))
               }
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={15}
               className="mt-2 w-full"
               placeholder="08xxxxxxxxxx (opsional)"
             />
@@ -190,8 +193,11 @@ export default function FormPengunjungBaru({
               <InputText
                 value={form.nik}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, nik: e.target.value }))
+                  setForm((prev) => ({ ...prev, nik: e.target.value.replace(/\D/g, "") }))
                 }
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={16}
                 className="mt-2 w-full"
                 placeholder="Masukkan NIK"
               />
