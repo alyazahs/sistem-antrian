@@ -91,7 +91,7 @@ def daftar_pengunjung():
     rfid_uid = clean_str(data.get("rfid_uid"))
     nik = clean_str(data.get("nik"))
     tanpa_ktp = bool(data.get("tanpa_ktp"))
-    nama = (data.get("nama") or "").strip()
+    nama = clean_str(data.get("nama"))
     nohp = clean_str(data.get("nohp"))
     alamat = clean_str(data.get("alamat"))
     tanggal_lahir = clean_str(data.get("tanggal_lahir"))
