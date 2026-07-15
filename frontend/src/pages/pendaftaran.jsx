@@ -68,10 +68,13 @@ export default function Pendaftaran() {
     if (statusScan !== "scanning") return;
 
     let stop = false;
+    let inFlight = false;
+    let timer;
 
-    const t = setInterval(async () => {
-      if (stop) return;
+    const poll = async () => {
+      if (stop || inFlight) return;
 
+      inFlight = true;
       try {
         const res = await scanRfid();
 
@@ -82,7 +85,7 @@ export default function Pendaftaran() {
 
         if (res?.status === "registered") {
           stop = true;
-          clearInterval(t);
+          if (timer) clearInterval(timer);
 
           const data = res.pengunjung;
           setPengunjung(data || null);
@@ -95,7 +98,7 @@ export default function Pendaftaran() {
 
         if (res?.status === "not_registered") {
           stop = true;
-          clearInterval(t);
+          if (timer) clearInterval(timer);
 
           setPengunjung(null);
           setRfidUid(res.rfid_uid || "");
@@ -111,12 +114,17 @@ export default function Pendaftaran() {
         setStatusScan("error");
         setPesanScan("Terjadi error saat scan. Coba lagi.");
         showAppToast(toastRef, "error", "Error saat memindai e-KTP.");
+      } finally {
+        inFlight = false;
       }
-    }, 900);
+    };
+
+    poll();
+    timer = setInterval(poll, 350);
 
     return () => {
       stop = true;
-      clearInterval(t);
+      if (timer) clearInterval(timer);
     };
   }, [statusScan]);
 
